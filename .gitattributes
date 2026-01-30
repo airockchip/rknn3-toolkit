@@ -1,0 +1,2 @@
+rknn3-toolkit/packages/rknn3_toolkit-1.0.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl filter=lfs diff=lfs merge=lfs -text
+rknn3-toolkit/packages/rknn3_toolkit-1.0.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl filter=lfs diff=lfs merge=lfs -text

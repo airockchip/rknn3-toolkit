@@ -1,0 +1,4 @@
+opencv-python>=4.5.5.64
+transformers>4.51.3
+numpy
+jinja2

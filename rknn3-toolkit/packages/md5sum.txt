@@ -1,0 +1,2 @@
+7c7c7366ad7ae483142dbd4ea9b6b1f0  rknn3_toolkit-1.0.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+54554b352e8b7fdf5efd09227871123b  rknn3_toolkit-1.0.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
