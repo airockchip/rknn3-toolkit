@@ -149,6 +149,7 @@ if __name__ == '__main__':
     parser.add_argument("--embed_path",     type=str, default=EMBED_PATH,     help="embedding bin path")
     parser.add_argument("--max_new_token",  type=int, default=256,            help="max new tokens")
     parser.add_argument("--core_mask",      type=str, default="0xff",         help="NPU core mask in hex")
+    parser.add_argument("--decrypt_key_path", type=str, default=None,         help="decrypt key/license file path for encrypted RKNN model")
     args = parser.parse_args()
 
     core_mask = int(args.core_mask, 16)
@@ -170,7 +171,8 @@ if __name__ == '__main__':
 
     # Step 2: Init runtime (without llm_args, separated flow)
     print('--> Init runtime environment')
-    ret = rknn.init_runtime(target='rk1820', core_mask=core_mask)
+    # ret = rknn.init_runtime(target='rk1820', core_mask=core_mask, decrypt_key_data=key_data) # key_data可从文件读取
+    ret = rknn.init_runtime(target='rk1820', core_mask=core_mask, decrypt_key_path=args.decrypt_key_path)
     if ret != 0:
         print('Init runtime environment failed!')
         exit(ret)

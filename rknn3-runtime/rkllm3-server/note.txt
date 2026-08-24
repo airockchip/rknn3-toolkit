@@ -1,0 +1,36 @@
+1. 将bin目录下的rkllm3-server推到3588的/data/下, 并将模型文件也推到/data/目录下
+2. 执行以下命令开启server:
+  ./rkllm3-server -m Qwen2.5-3B_dyn_0714_8core_256ctx.rknn --vocab Qwen2.5-3B-Instruct.tokenizer.gguf --embedding Qwen2.5-3B-Instruct.embed.bin --host 0.0.0.0 --port 8080 --n_predict 512  --repeat-penalty 1.1 --presence-penalty 1.0 --frequency-penalty 1.0 --top-k 1 --top-p 0.8 --temp 0.8
+  如果是多模态模型，则需要加入--model2参数和--img-start / --img-end / --img-content等参数，如下:
+  ./rkllm3-server -m MiniCPM-3o-llm.rknn --model2 MiniCPM-3o-vision.rknn --vocab MiniCPM-3o-llm.tokenizer.gguf --embedding MiniCPM-3o-llm.embed.bin --host 0.0.0.0 --port 8080 -c 768 --n_predict 512  --repeat-penalty 1.1 --presence-penalty 1.0 --frequency-penalty 1.0 --top-k 1 --top-p 0.8 --temp 0.8 --img-start "<image>" --img-end "</image>" --img-content "<unk>"
+  或
+  ./rkllm3-server -m FastVLM-llm.rknn --model2 FastVLM-vision_512.rknn --vocab FastVLM-llm.tokenizer.gguf --embedding FastVLM-llm.embed.bin --host 0.0.0.0 --port 8080 -c 768 --n_predict 512  --repeat-penalty 1.1 --presence-penalty 1.0 --frequency-penalty 1.0 --top-k 1 --top-p 0.8 --temp 0.8 --img-start "<|im_start|>" --img-end "<|im_end|>" --img-content "<|image_pad|>"
+  或
+  ./rkllm3-server -m Qwen2.5-VL-3B-llm.rknn --model2 Qwen2.5-VL-3B-vision.rknn --vocab Qwen2.5-VL-3B-llm.tokenizer.gguf --embedding Qwen2.5-VL-3B-llm.embed.bin --host 0.0.0.0 --port 8080 -c 768 --n_predict 512  --repeat-penalty 1.1 --presence-penalty 1.0 --frequency-penalty 1.0 --top-k 1 --top-p 0.8 --temp 0.8 --img-start "<|vision_start|>" --img-end "<|vision_end|>" --img-content "<|image_pad|>" --qwenvl
+3. 在主机端通过adb shell命令查看3588的ip地址, 修改test.py/test_multimodal.py里的3588地址, 如下:
+    client = openai.OpenAI(
+        base_url="http://172.16.10.172:8080/v1",
+        api_key = "sk-no-key-required"
+    )
+4. 在主机端执行test.py或test_multimodal.py
+
+
+注: 
+1. 更多rkllm3-server的用法请查看 README_CN.md
+2. android的板子需要先执行以下命令, 再执行上述rkllm3-server命令:
+   export LD_LIBRARY_PATH=/data/rknn3_session_test_demo/
+   cd /data/rknn3_session_test_demo
+   ./npu_transfer_proxy &
+3. 除了test.py里使用openai的接口外, 还可以使用curl的方式来与server交互, 如下:
+    curl http://172.16.10.172:8080/v1/chat/completions \
+      -H "Content-Type: application/json" \
+      -d '{
+        "messages": [
+          {"role": "user", "content": "请解释一下相对论的基本概念。"}
+        ],
+        "n_keep": 0,
+        "cache_prompt": false,
+        "id_slot": 0,
+        "n_predict": 64,
+        "stream": true
+      }' 

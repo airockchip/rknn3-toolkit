@@ -39,50 +39,97 @@ RKNN3 SDK 提供了将 AI 模型部署到 RK1820/RK1828/RK3572 所需的完整�
 
 
 
-# 支持模型  
+# 支持模型
 
- - [x] Qwen2.5-0.5B / 1.5B / 3B / 7B
- - [x] Qwen3-0.6B / 1.7B / 4B / 8B
- - [x] HY-MT1.5-1.8B
- - [x] Youtu-LLM-2B
+### LLM
+
+ - [x] Qwen2.5
+ - [x] Qwen3
+ - [x] Qwen3.5
+ - [x] Youtu-LLM
  - [x] GLM-Edge
- - [x] Qwen2.5-VL-3B / 7B
- - [x] Qwen2.5-Omni-3B (Thinker)
- - [x] Qwen3-VL-2B / 4B
- - [x] FastVLM-1.6B
- - [x] InternVL3-2B
- - [x] InternVL3.5-4B
- - [x] MiMo-VL-7B-RL
- - [x] Gemma4
+ - [x] MiniCPM5
+ - [x] Nanbeige4.2
+ - [x] FunctionGemma
+ - [x] LFM2.5
+
+### VLM
+
+ - [x] Qwen2.5-VL
+ - [x] Qwen3-VL
+ - [x] Qwen3.5-VL
+ - [x] FastVLM
+ - [x] InternVL3
+ - [x] InternVL3.5
+ - [x] MiMo-VL-RL
+ - [x] Janus-Pro
+ - [x] MiniCPM-V-4
  - [x] SmolVLM
  - [x] SmolVLM2
  - [x] UI_TARS
- - [x] PaddleOCR VL
- - [x] Qwen3-Reranker-0.6B / 4B
- - [x] Qwen3-Embedding-4B
- - [x] gme-Qwen2-VL-2B
+ - [x] gme-Qwen2-VL
+ - [x] LocateAnything
+
+### Omni
+
+ - [x] Qwen2.5-Omni (Thinker)
+ - [x] Qwen3-Omni
+ - [x] Qwen3.5-Omni
+ - [x] Gemma4
+
+### ASR（语音识别）
+
  - [x] Qwen3-ASR
- - [x] Qwen3_TTS
- - [x] VITS
+ - [x] WeNet (Conformer)
  - [x] Whisper
  - [x] SenseVoice
  - [x] Zipformer
+
+### TTS（文本转语音）
+
+ - [x] Qwen3_TTS
+ - [x] VITS
+
+### Embedding / Reranker
+
+ - [x] Qwen3-Embedding
+ - [x] Qwen3-Reranker
+
+### 翻译
+
+ - [x] HY-MT1.5
+
+### OCR
+
+ - [x] PaddleOCR VL
+
+### CV（计算机视觉）
+
  - [x] SigLIP
  - [x] SigLIP2
  - [x] MetaCLIP2
+ - [x] QA-CLIP
  - [x] DINOv2
  - [x] DINOv3
+ - [x] Depth-Anything-V2-small
+ - [x] Depth-Anything-V3
+ - [x] Diffusion Policy
+ - [x] GR00T
+ - [x] MiniCPM-RobotManip
  - [x] MobileNetV1 / V2
  - [x] ResNet-50
  - [x] YOLOv5 / YOLOv6 / YOLOv8
  - [x] YOLO-World
- - [x] Diffusion Policy
- - [x] GR00T
+ - [x] YOLO26 / YOLO26-Segment / YOLO26-Pose
+
+### 预转换 RKNN 模型
+
+用户可以从 [RKNN3_SDK 网盘](https://console.box.lenovo.com/l/H1fig1) 下载预先转换好的 RKNN 模型（提取码：`rknn`）。本次发布的模型位于 `RKNN3_SDK/rknn3_models/v1.1.0` 目录。
 
 
 # 性能
 
-性能数据请参考 [发布说明](doc/00_Rockchip_RK182X_ReleaseNote_RKNN3_SDK_V1.0.0_CN.pdf)
+性能数据请参考 [发布说明](doc/CN/00_RKNN3_SDK_发布说明_V1.1.0.pdf)
 
 # 注意事项  
 
@@ -95,35 +142,26 @@ RKNN3 SDK 提供了将 AI 模型部署到 RK1820/RK1828/RK3572 所需的完整�
   - Python 3.10  
   - Python 3.12  
 
-# 最新版本：V1.0.4
-
-
+# 最新版本：V1.1.0
 
 # 更新日志
 
-## V1.0.4
-- 新增 RK3572 平台支持 (Beta)
-- 新增 Windows 平台支持
-- 新增以太网通信类型支持
-- 新增设备休眠/唤醒支持
-- 新增服务端自动选择通信方式
-- 新增流式权重加载支持
-- 新增模型加密支持
-- 新增 LoRA 支持
-- 新增 session 暂停/恢复功能
-- 新增 session input callback 功能
-- 新增多 session 并行运行支持
-- 新增 KVCache 导入/导出接口
-- 新增组件版本兼容性校验
-- 新增 Qwen3 TTS 语音合成模型
-- 新增 Qwen3-ASR 语音识别模型
-- 新增 VITS 音频合成模型
-- 新增 Zipformer 模型
-- 新增 MetaCLIP2 模型
-- 新增 Gemma4 多模态模型
-- 新增 GR00T 模型
-- 新增 PaddleOCR VL 模型
-- 新增 SmolVLM2 视觉语言模型
+## V1.1.0
+
+- 新增 RK182X 多卡级联支持
+- 新增 Qwen3.5 模型支持
+- 新增 Qwen3.5 和 Gemma4 的 Prefix Caching 支持
+- 新增自定义 CPU 算子支持
+- 新增多 Session 设置不同上下文长度的支持，满足不同会话的使用需求
+- 新增 Tie Word Embedding 支持
+- 新增 RKNN3 Toolkit 对 macOS 平台的支持（Beta）
+- 优化 KVCache 导入和导出过程中的 Host 端内存占用
+- 优化 `rknn3_mem_sync` 接口性能
+- 优化 GRQ 量化过程中的 GPU 显存占用
+- 更新外部 GRQ 量化的使用方式
+- 调整 RKNN3 Toolkit 模型导入方式：统一使用 ONNX（移除 TensorFlow/TFLite/Caffe/DarkNet 支持）
+
+更多历史版本的更新内容，请参阅：[CHANGELOG.md](CHANGELOG.md)
 
 
 # 反馈与社区支持  

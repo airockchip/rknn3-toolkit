@@ -1,0 +1,8 @@
+# Force all .sh files to use LF line endings
+*.sh text eol=lf
+
+# Force all .py files to use LF line endings (Python scripts are also affected)
+*.py text eol=lf
+
+# Let Git auto-handle line endings for other text files
+* text=auto

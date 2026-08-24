@@ -1,4 +1,4 @@
-2b3db52161cf47271b49180481d5dad0  rknn3_toolkit_lite-1.0.4-cp310-cp310-linux_aarch64.whl
-08ee8a4f4fc2f18bc1e815e934e5122a  rknn3_toolkit_lite-1.0.4-cp311-cp311-linux_aarch64.whl
-4f81cf4ec164af533e001e7d0f9becd8  rknn3_toolkit_lite-1.0.4-cp312-cp312-linux_aarch64.whl
-072503df1cbb98228c264015188d0dfa  rknn3_toolkit_lite-1.0.4-cp39-cp39-linux_aarch64.whl
+db53cd800cfacf3fdd019f5aa71e334b  rknn3_toolkit_lite-1.1.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
+c49aef84acab251c57c61d6909aafe43  rknn3_toolkit_lite-1.1.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
+6f987a9f24ecf00498eca6c680afa148  rknn3_toolkit_lite-1.1.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
+1b909984276e490212f8ab55c06afd96  rknn3_toolkit_lite-1.1.0-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl

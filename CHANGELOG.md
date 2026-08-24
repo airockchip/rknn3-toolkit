@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## V1.1.0
+
+- Added RK182X multi-card cascade support
+- Added Qwen3.5 model support
+- Added Qwen3.5 and Gemma4 Prefix Caching support
+- Added custom CPU operator support
+- Added support for different context lengths across sessions
+- Added Tie Word Embedding support
+- Added RKNN3 Toolkit support for macOS (Beta)
+- Optimized host-side memory usage during KVCache import and export
+- Optimized `rknn3_mem_sync` API performance
+- Optimized GPU memory usage during GRQ quantization
+- Updated the usage of external GRQ quantization
+- Changed the RKNN3 Toolkit model import method to use ONNX only (TensorFlow/TFLite/Caffe/DarkNet support removed)
+
 ## V1.0.4
 - Added RK3572 platform support (Beta)
 - Added Windows platform support

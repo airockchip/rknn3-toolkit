@@ -85,3 +85,6 @@ python test_video.py \
 - Tokenizer 报错/编码问题：确认 `--tokenizer_path` 指向正确的 HuggingFace tokenizer 目录或可用名称。
 - embed 回调失败：确认 `llm.embed.bin` 的 shape 与脚本中 `VOCAB_SIZE`、嵌入维度一致。
 - 视觉模型预处理不正确：确认输入图像尺寸与模型所需尺寸一致（脚本中默认将图像 resize 到 384x384 并进行了 prune 处理，如需完整模型请移除 prune 步骤）。
+- 关于 Aux Tensor 的内存分配与防碎片化：
+  在处理多模态（特别是视频多帧/长序列输入）时，底层 NPU 要求分配的物理内存地址必须是连续的。如果你的代码在运行时频繁地释放旧 `aux` tensor 并申请新尺寸的 `aux` tensor，极易导致 NPU 物理内存碎片化，最终引发底层的 OOM（`Memory allocation failed: rt malloc failed`）。
+  最佳实践：要在最开始初始化（或首次运行）时，直接按照预期可能遇到的最大输入尺寸（例如最大帧数、最大分辨率）去申请最大的 tensor 内存进行扩容。后续所有的推理请求，无论实际输入多小，都直接复用这块已经分配好的大内存（只需覆盖实际有效数据并传递正确的 `nbytes`/`shape` 即可）。这样可以彻底消除频繁申请/释放带来的内存碎片隐患。

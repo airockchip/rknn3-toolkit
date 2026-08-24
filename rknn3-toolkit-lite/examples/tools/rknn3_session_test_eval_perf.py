@@ -60,7 +60,7 @@ def tokenizer_callback(userdata, text_ptr, text_len, tokens_ptr, n_tokens_max):
     return n_tokens
 
 
-def embed_callback(userdata, tokens_ptr, num_tokens, embded, length):
+def embed_callback(userdata, tokens_ptr, num_tokens, embed, length):
     global embeds_data
     embedding_dim = embeds_data.shape[1]
     expected_len = num_tokens * embedding_dim * np.dtype(np.float16).itemsize
@@ -68,7 +68,7 @@ def embed_callback(userdata, tokens_ptr, num_tokens, embded, length):
         print("invalid embed buffer")
         return -1
     dst = np.ctypeslib.as_array(
-        ctypes.cast(embded, ctypes.POINTER(ctypes.c_uint16)),
+        ctypes.cast(embed, ctypes.POINTER(ctypes.c_uint16)),
         shape=(num_tokens * embedding_dim,)
     ).view(np.float16)
     tokens = [tokens_ptr[i] for i in range(num_tokens)]
@@ -136,8 +136,8 @@ if __name__ == '__main__':
                     "--rknn_path Qwen2.5-0.5B.rknn --tokenizer_path Qwen/Qwen2.5-0.5B-Instruct "
                     "--embed_path Qwen2.5-0.5B.embed.bin --max_context_len 1024 "
                     "--n_input_tokens 128 --max_new_tokens 128 --core_mask 0xff")
-    parser.add_argument("--rknn_path",       type=str, required=True,          help="rknn model path")
-    parser.add_argument("--tokenizer_path",  type=str, required=True,          help="huggingface tokenizer path")
+    parser.add_argument("--rknn_path",       type=str, default=RKNN_MODEL,     help="rknn model path")
+    parser.add_argument("--tokenizer_path",  type=str, default=TOKENIZER_PATH, help="huggingface tokenizer path")
     parser.add_argument("--embed_path",      type=str, default=EMBED_PATH,     help="embedding bin path")
     parser.add_argument("--max_context_len", type=int, default=1024,           help="max context length")
     parser.add_argument("--n_input_tokens",  type=int, default=128,            help="number of input tokens")

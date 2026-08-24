@@ -1,0 +1,26 @@
+# if install failed, please change the pip source to 'https://pypi.tuna.tsinghua.edu.cn/simple/'
+
+# base deps
+protobuf>=4.21.6,<=6.33.6
+
+# utils
+psutil>=5.9.0
+ruamel.yaml>=0.17.21
+scipy>=1.12.0
+tqdm>=4.64.1
+opencv-python>=4.8
+fast-histogram>=0.11
+numpy>=2.0
+pillow
+sentencepiece
+safetensors
+torch>=2.2
+datasets
+
+tabulate
+pandas
+prettytable
+
+# base
+onnx>=1.16
+onnxruntime>=1.22.0

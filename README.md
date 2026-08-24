@@ -41,48 +41,95 @@ RKNN3 SDK provides the complete software stack for deploying AI models on RK1820
 
 # Supported Models
 
- - [x] Qwen2.5-0.5B / 1.5B / 3B / 7B
- - [x] Qwen3-0.6B / 1.7B / 4B / 8B
- - [x] HY-MT1.5-1.8B
- - [x] Youtu-LLM-2B
+### LLM
+
+ - [x] Qwen2.5
+ - [x] Qwen3
+ - [x] Qwen3.5
+ - [x] Youtu-LLM
  - [x] GLM-Edge
- - [x] Qwen2.5-VL-3B / 7B
- - [x] Qwen2.5-Omni-3B (Thinker)
- - [x] Qwen3-VL-2B / 4B
- - [x] FastVLM-1.6B
- - [x] InternVL3-2B
- - [x] InternVL3.5-4B
- - [x] MiMo-VL-7B-RL
- - [x] Gemma4
+ - [x] MiniCPM5
+ - [x] Nanbeige4.2
+ - [x] FunctionGemma
+ - [x] LFM2.5
+
+### VLM
+
+ - [x] Qwen2.5-VL
+ - [x] Qwen3-VL
+ - [x] Qwen3.5-VL
+ - [x] FastVLM
+ - [x] InternVL3
+ - [x] InternVL3.5
+ - [x] MiMo-VL-RL
+ - [x] Janus-Pro
+ - [x] MiniCPM-V-4
  - [x] SmolVLM
  - [x] SmolVLM2
  - [x] UI_TARS
- - [x] PaddleOCR VL
- - [x] Qwen3-Reranker-0.6B / 4B
- - [x] Qwen3-Embedding-4B
- - [x] gme-Qwen2-VL-2B
+ - [x] gme-Qwen2-VL
+ - [x] LocateAnything
+
+### Omni
+
+ - [x] Qwen2.5-Omni (Thinker)
+ - [x] Qwen3-Omni
+ - [x] Qwen3.5-Omni
+ - [x] Gemma4
+
+### ASR (Speech Recognition)
+
  - [x] Qwen3-ASR
- - [x] Qwen3_TTS
- - [x] VITS
+ - [x] WeNet (Conformer)
  - [x] Whisper
  - [x] SenseVoice
  - [x] Zipformer
+
+### TTS (Text-to-Speech)
+
+ - [x] Qwen3_TTS
+ - [x] VITS
+
+### Embedding / Reranker
+
+ - [x] Qwen3-Embedding
+ - [x] Qwen3-Reranker
+
+### Translation
+
+ - [x] HY-MT1.5
+
+### OCR
+
+ - [x] PaddleOCR VL
+
+### CV (Computer Vision)
+
  - [x] SigLIP
  - [x] SigLIP2
  - [x] MetaCLIP2
+ - [x] QA-CLIP
  - [x] DINOv2
  - [x] DINOv3
+ - [x] Depth-Anything-V2-small
+ - [x] Depth-Anything-V3
+ - [x] Diffusion Policy
+ - [x] GR00T
+ - [x] MiniCPM-RobotManip
  - [x] MobileNetV1 / V2
  - [x] ResNet-50
  - [x] YOLOv5 / YOLOv6 / YOLOv8
  - [x] YOLO-World
- - [x] Diffusion Policy
- - [x] GR00T
+ - [x] YOLO26 / YOLO26-Segment / YOLO26-Pose
+
+### Pre-converted RKNN Models
+
+Users can download pre-converted RKNN models from the [RKNN3_SDK cloud drive](https://console.box.lenovo.com/l/H1fig1) (access code: `rknn`). The models for this release are available under `RKNN3_SDK/rknn3_models/v1.1.0`.
 
 
 # Performance
 
-For performance data, please refer to the [Release Notes](doc/00_Rockchip_RK182X_ReleaseNote_RKNN3_SDK_V1.0.0_EN.pdf).
+For performance data, please refer to the [Release Notes](doc/EN/00_RKNN3_SDK_Release_Notes_V1.1.0.pdf).
 
 # Notes
 
@@ -95,35 +142,26 @@ For performance data, please refer to the [Release Notes](doc/00_Rockchip_RK182X
 - Python 3.10
 - Python 3.12
 
-# Latest Version: V1.0.4
+# Latest Version: V1.1.0
 
 
 # Changelog
 
-## V1.0.4
-- Added RK3572 platform support (Beta)
-- Added Windows platform support
-- Added Ethernet communication type support
-- Added device suspension and wake-up support
-- Added server-side auto-select communication method
-- Added streaming weight loading support
-- Added model encryption support
-- Added LoRA support
-- Added session pause/resume support
-- Added session input callback support
-- Added multi-session parallel running support
-- Added KVCache import/export interface
-- Added module version compatibility check
-- Added Qwen3 TTS text-to-speech model
-- Added Qwen3-ASR speech recognition model
-- Added VITS audio synthesis model
-- Added Zipformer model
-- Added MetaCLIP2 model
-- Added Gemma4 multimodal model
-- Added GR00T model
-- Added PaddleOCR VL model
-- Added SmolVLM2 vision-language model
+## V1.1.0
+- Added RK182X multi-card cascade support
+- Added Qwen3.5 model support
+- Added Qwen3.5 and Gemma4 Prefix Caching support
+- Added custom CPU operator support
+- Added support for different context lengths across sessions
+- Added Tie Word Embedding support
+- Added RKNN3 Toolkit support for macOS (Beta)
+- Optimized host-side memory usage during KVCache import and export
+- Optimized `rknn3_mem_sync` API performance
+- Optimized GPU memory usage during GRQ quantization
+- Updated the usage of external GRQ quantization
+- Changed the RKNN3 Toolkit model import method to use ONNX only (TensorFlow/TFLite/Caffe/DarkNet support removed)
 
+For more information about previous releases, please refer to [CHANGELOG.md](CHANGELOG.md).
 
 # Feedback and Community Support
 

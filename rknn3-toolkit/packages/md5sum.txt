@@ -1,2 +1,4 @@
-1a5093273754047aec559307f80d82bb  rknn3_toolkit-1.0.4-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
-6495cf5f7883de47f3598db58675c446  rknn3_toolkit-1.0.4-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
+71b06f6c6d7322b8f17861b9f1c639c6  rknn3_toolkit-1.1.0-cp310-cp310-macosx_13_0_arm64.whl
+ad7915c441c2e28aaa8b7511cda1dd8b  rknn3_toolkit-1.1.0-cp310-cp310-manylinux2014_x86_64.whl
+a47e8aa860e2c0ee1813e2dbb2567888  rknn3_toolkit-1.1.0-cp312-cp312-macosx_13_0_arm64.whl
+941bb58c722be7185a023170dca99e86  rknn3_toolkit-1.1.0-cp312-cp312-manylinux2014_x86_64.whl
