@@ -4,11 +4,23 @@
 
 RKNN3 SDK provides the complete software stack for deploying AI models on RK1820/RK1828/RK3572, including:
 
-- **[RKNN3-Toolkit](https://github.com/airockchip/rknn3-toolkit)**: PC-side software development kit for model conversion, inference, performance evaluation, etc.
-- **RKNN3 Runtime**: On-board runtime library providing C/C++ programming interfaces for deploying RKNN models and accelerating AI applications.
-- **[RKNN3 Model Zoo](https://github.com/airockchip/rknn3-model-zoo)**: Model conversion and deployment example repository, including reference implementations for CNN / LLM / VLM and other models.
+**Core Components**:
 
-**Typical Workflow**: Users first convert their trained models to RKNN format using RKNN3-Toolkit on a PC, then perform inference on the development board via the RKNN3 Runtime API.
+- **[RKNN3-Toolkit](https://github.com/airockchip/rknn3-toolkit)**: PC-side software development kit for model conversion, inference, performance evaluation, etc.
+- **[RKNN3 Runtime](https://github.com/airockchip/rknn3-toolkit/tree/main/rknn3-runtime)**: On-board runtime library providing C/C++ programming interfaces for deploying RKNN models and accelerating AI applications.
+- **[RKNN3-Toolkit Lite](https://github.com/airockchip/rknn3-toolkit/tree/main/rknn3-toolkit-lite)**: On-board Python inference interface that wraps the RKNN3 Runtime (C API), supporting rapid verification and upper-layer application development for CNN / LLM / VLM models.
+- **[rkllm3-server](https://github.com/airockchip/rknn3-toolkit/tree/main/rknn3-runtime/rkllm3-server)**: On-board OpenAI-compatible API service supporting text, image, and audio inputs, suitable for service deployment of LLM / VLM models.
+
+**Companion Resources**:
+
+- **[RKNN3 Model Zoo](https://github.com/airockchip/rknn3-model-zoo)**: Model conversion and deployment example repository, including reference implementations for CNN / LLM / VLM and other models.
+- **[RK1820/RK1828 Firmware](https://console.box.lenovo.com/l/PHk0PF)**: Prebuilt firmware for RK1820/RK1828 development boards; flash it to deploy and run RKNN3 models on the board.
+
+**Typical Workflow**: The typical model deployment workflow consists of the following three stages:
+
+1. **Model Conversion (PC side)**: Use RKNN3-Toolkit to convert trained models (e.g., ONNX) to RKNN format, configure normalization, quantization, and target platform parameters, and export `.rknn` and `.weight` model files.
+2. **Model Evaluation (board-connected)**: Connect to the development board via USB or network to verify inference correctness, and perform accuracy and performance analysis.
+3. **Board Deployment (on-board)**: Load and run the RKNN model in the application using the RKNN3 Runtime C API, completing business integration and accelerated inference.
 
 
 
@@ -17,6 +29,13 @@ RKNN3 SDK provides the complete software stack for deploying AI models on RK1820
 - RK1820
 - RK1828
 - RK3572
+
+**Deployment Modes**:
+
+- **Coprocessor mode (RK1820/RK1828)**: Requires a host SoC (e.g., RK3588 / RK3576) or Windows PC; communicates with the coprocessor via `rknn3_transfer_proxy` over PCIe / USB / Ethernet.
+- **Non-coprocessor mode (RK3572)**: The NPU is integrated inside the SoC; models run directly on the board.
+
+**Supported OS**: Android / Linux / Windows
 
 **Note**:
 
@@ -122,18 +141,9 @@ RKNN3 SDK provides the complete software stack for deploying AI models on RK1820
  - [x] YOLO-World
  - [x] YOLO26 / YOLO26-Segment / YOLO26-Pose
 
-### Pre-converted RKNN Models
-
-Users can download pre-converted RKNN models from the [RKNN3_SDK cloud drive](https://console.box.lenovo.com/l/H1fig1) (access code: `rknn`). The models for this release are available under `RKNN3_SDK/rknn3_models/v1.1.0`.
-
-
 # Performance
 
 For performance data, please refer to the [Release Notes](doc/EN/00_RKNN3_SDK_Release_Notes_V1.1.0.pdf).
-
-# Notes
-
-- **RKNN3-Toolkit** is **not compatible** with [RKNN-Toolkit](https://github.com/airockchip/rknn-toolkit) and [RKNN-Toolkit2](https://github.com/airockchip/rknn-toolkit2).
 
 
 
@@ -141,9 +151,6 @@ For performance data, please refer to the [Release Notes](doc/EN/00_RKNN3_SDK_Re
 
 - Python 3.10
 - Python 3.12
-
-# Latest Version: V1.1.0
-
 
 # Changelog
 
@@ -162,6 +169,45 @@ For performance data, please refer to the [Release Notes](doc/EN/00_RKNN3_SDK_Re
 - Changed the RKNN3 Toolkit model import method to use ONNX only (TensorFlow/TFLite/Caffe/DarkNet support removed)
 
 For more information about previous releases, please refer to [CHANGELOG.md](CHANGELOG.md).
+
+
+
+# Documentation
+
+Detailed documentation is available in the `doc/` directory:
+
+- [RKNN3 SDK Release Notes](doc/EN/00_RKNN3_SDK_Release_Notes_V1.1.0.pdf)
+- [RKNN3 SDK Quick Start](doc/EN/01_RKNN3_SDK_QuickStart_V1.1.0.pdf)
+- [RKNN3 SDK Development Guide](doc/EN/02_RKNN3_SDK_Development_Guide_V1.1.0.pdf)
+- [RKNN3 Toolkit Python API Reference](doc/EN/03_RKNN3_Toolkit_Python_API_Reference_V1.1.0.pdf)
+- [RKNN3 Toolkit Lite Python API Reference](doc/EN/04_RKNN3_Toolkit_Lite_Python_API_Reference_V1.1.0.pdf)
+- [RKNN3 Runtime C API Reference](doc/EN/05_RKNN3_Runtime_C_API_Reference_V1.1.0.pdf)
+- [RKLLM3 Server User Guide](doc/EN/06_RKLLM3_Server_User_Guide_V1.1.0.pdf)
+- [RKNN3 Supported Operators and Constraints Reference](doc/EN/07_RKNN3_Supported_Operators_and_Constraints_Reference_V1.1.0.pdf)
+
+
+
+# Cloud Drive Resources
+
+- RK3588 EVB10 prebuilt firmware (RK3588_EVB10/RELEASE_V1.1.0):
+
+   [https://console.box.lenovo.com/l/7oOghG](https://console.box.lenovo.com/l/7oOghG)
+
+- RK1820/RK1828 prebuilt firmware (RK1820_RK1828/RELEASE_V1.1.0):
+
+    [https://console.box.lenovo.com/l/PHk0PF](https://console.box.lenovo.com/l/PHk0PF)
+
+- Pre-converted RKNN models (RKNN3_SDK/rknn3_models/v1.1.0):
+
+    [https://console.box.lenovo.com/l/H1fig1](https://console.box.lenovo.com/l/H1fig1), access code: `rknn`
+
+
+
+# Notes
+
+- **RKNN3-Toolkit** is **not compatible** with [RKNN-Toolkit](https://github.com/airockchip/rknn-toolkit) and [RKNN-Toolkit2](https://github.com/airockchip/rknn-toolkit2).
+
+
 
 # Feedback and Community Support
 
