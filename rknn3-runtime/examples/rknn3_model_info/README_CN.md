@@ -12,12 +12,21 @@ export GCC_COMPILER=~/opt/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/
 ./build-linux.sh -t rk3588 -a aarch64 -b Release
 ```
 
+### Linux x86_64（PC 直连 RK182X）
+
+无需交叉编译器，在 PC 上直接本机编译：
+
+```sh
+./build-linux.sh -a x86_64 -b Release
+```
+
 ## install 目录库文件说明
 
 编译并执行 `make install` 后，`install/rknn3_model_info_Linux/lib` 中会按平台安装以下库：
 
 - RK3576 / RK3588：`librknn3_api.so` + `librknn3_api_rkcp.so`
 - RK3572：`librknn3_api.so` + `librknn3_api_native.so`
+- x86_64 PC：`librknn3_api.so` + `librknn3_api_rkcp.so`
 
 ## 推送到板端
 

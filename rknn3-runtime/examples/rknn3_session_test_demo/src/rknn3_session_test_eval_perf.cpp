@@ -63,7 +63,6 @@ int main(int argc, char** argv)
   rknn3_test_session_userdata_t session_userdata;
   rknn3_llm_param               params;
   RKLLMRunState                 state;
-  rknn3_lora                    loras_enabled[RKNN3_MAX_LORA_NUM];
   rknn3_llm_config              llm_config;
   rknn3_kvcache_policy          kvcache_policy = RKNN3_KVCACHE_POLICY_NORMAL;
   rknn3_kvcache_policy_param    kvcache_policy_param;
@@ -80,12 +79,10 @@ int main(int argc, char** argv)
   memset(&params, 0, sizeof(params));
   memset(&state, 0, sizeof(state));
   memset(&llm_config, 0, sizeof(llm_config));
-  memset(loras_enabled, 0, sizeof(loras_enabled));
   memset(&kvcache_policy_param, 0, sizeof(kvcache_policy_param));
   memset(llm_inputs, 0, sizeof(llm_inputs));
   memset(&llm_infer_param, 0, sizeof(llm_infer_param));
   memset(&session_userdata, 0, sizeof(session_userdata));
-  state.loras_enabled = loras_enabled;
 
   int test_num = 3;
 
@@ -175,7 +172,7 @@ int main(int argc, char** argv)
       goto exit;
     }
 
-    ret = rknn3_session_clear_kvcache(session_userdata.session, RKNN3_KVCACHE_KEEP_SYSTEM_PROMPT);
+    ret = rknn3_session_clear_kvcache(session_userdata.session, RKNN3_KVCACHE_KEEP_SYSTEM_PROMPT, nullptr);
     if (ret != RKNN3_SUCCESS) {
       printf("rknn3_session_clear_kvcache failed, ret=%d\n", ret);
       goto exit;

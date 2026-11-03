@@ -28,6 +28,38 @@
 #define DEFAULT_SHAPE_ID   0
 #define DEFAULT_ENABLE_OUTPUT_CHECKSUM 1
 
+typedef struct rknn3_control_variables
+{
+#ifdef __cplusplus
+  rknn3_control_variables()
+    : rknn3_control_variables(0, 0, 0, 0, -1, 0, 0, 0, 1)
+  {}
+
+  rknn3_control_variables(int32_t Th, int32_t Tc, int32_t Ts, int32_t Tsr, int32_t longest_surviving_id,
+                          int32_t store_begin_id, int32_t Tr, int32_t Ti, int32_t request_mask)
+    : Th(Th)
+    , Tc(Tc)
+    , Ts(Ts)
+    , Tsr(Tsr)
+    , longest_surviving_id(longest_surviving_id)
+    , store_begin_id(store_begin_id)
+    , Tr(Tr)
+    , Ti(Ti)
+    , request_mask(request_mask)
+  {}
+#endif
+
+  int32_t Th;
+  int32_t Tc;
+  int32_t Ts;
+  int32_t Tsr;
+  int32_t longest_surviving_id;
+  int32_t store_begin_id;
+  int32_t Tr;
+  int32_t Ti;
+  int32_t request_mask;
+} rknn3_control_variables;
+
 // --- Utility helpers ---
 
 // Portable strdup for splitting '#' separated file lists.
@@ -1041,6 +1073,7 @@ static int init_rknn3_context(rknn3_context* ctx, const DemoConfig* cfg)
   }
 
   rknn3_dev_mem_info dev_mem_info;
+  memset(&dev_mem_info, 0, sizeof(dev_mem_info));
   ret = rknn3_query(*ctx, RKNN3_QUERY_DEVICE_MEM_INFO, &dev_mem_info, sizeof(dev_mem_info));
   if (ret != RKNN3_SUCCESS) {
     printf("rknn3_query device mem info failed! ret=%d\n", ret);
@@ -1430,7 +1463,7 @@ static int setup_demo_tensors(rknn3_context ctx, int32_t shape_id, DemoTensors* 
   }
 
   // Query all supported shape variants (static and dynamic)
-  tensors->shape_infos = (rknn3_shape_info*)malloc(sizeof(rknn3_shape_info) * tensors->shape_config.n_shapes);
+  tensors->shape_infos = (rknn3_shape_info*)calloc(tensors->shape_config.n_shapes, sizeof(rknn3_shape_info));
   if (!tensors->shape_infos) {
     printf("Failed to allocate memory for shape info\n");
     return -1;
@@ -1638,6 +1671,12 @@ static int fill_random_input_data(DemoTensors& tensors)
     bool  is_special_tensor = false;
     float special_value     = 0.0f;
 
+    bool is_control_variables = strstr(input_attr->name, "control_variables") != NULL &&
+                                input_attr->dtype == RKNN3_TENSOR_INT32 && input_attr->n_dims == 2 &&
+                                input_attr->shape[1] >= 9;
+    rknn3_control_variables control_values;
+    control_values.Tc = 1;
+
     if (strstr(input_attr->name, "Th") != NULL && input_attr->n_dims == 1 && input_attr->shape[0] == 1) {
       is_special_tensor = true;
       special_value     = 0.0f;
@@ -1672,6 +1711,22 @@ static int fill_random_input_data(DemoTensors& tensors)
       printf("Special tensor '%s' detected, setting all values to %d\n", input_attr->name, (int)special_value);
     }
 
+    if (is_control_variables) {
+      for (uint32_t k = 0; k < tensors.io_num.n_input; ++k) {
+        rknn3_tensor_attr* attr = tensors.inputs[k].attr;
+        if (strstr(attr->name, "attention_mask") != NULL && attr->n_dims >= 2) {
+          control_values.Tc = (int32_t)attr->shape[1];
+          break;
+        }
+      }
+      printf("Special tensor 'control_variables' detected, setting values to "
+             "Th/Tc/Ts/Tsr/longest_surviving_id/store_begin_id/Tr/Ti/request_mask="
+             "%d/%d/%d/%d/%d/%d/%d/%d/%d\n",
+             control_values.Th, control_values.Tc, control_values.Ts, control_values.Tsr,
+             control_values.longest_surviving_id, control_values.store_begin_id, control_values.Tr,
+             control_values.Ti, control_values.request_mask);
+    }
+
     switch (input_attr->dtype) {
     case RKNN3_TENSOR_FLOAT16: {
       float16* data = (float16*)input_mem->virt_addr;
@@ -1696,6 +1751,12 @@ static int fill_random_input_data(DemoTensors& tensors)
       } else {
         for (uint32_t i = 0; i < dst_elems; i++) {
           data[i] = (int32_t)(rand() % 2001 - 1000);
+        }
+        if (is_control_variables) {
+          uint32_t variables_per_row = (uint32_t)input_attr->shape[1];
+          for (uint32_t row = 0; row < dst_elems / variables_per_row; ++row) {
+            memcpy(data + row * variables_per_row, &control_values, sizeof(control_values));
+          }
         }
       }
       break;
@@ -2320,8 +2381,8 @@ int main(int argc, char* argv[])
   int           ret        = -1;
   DemoConfig    cfg;
   DemoTensors   tensors;
-  rknn3_context ctx;
-  bool          ctx_inited = false;
+  rknn3_context ctx          = 0;
+  bool          ctx_inited   = false;
   std::vector<rknn3_tensor_mem*> kvcache_mems;
 
   std::vector<npy_array> input_arrays;
@@ -2352,6 +2413,16 @@ int main(int argc, char* argv[])
   } else if (load_model_path_mode(ctx, &cfg) != 0) {
     goto cleanup;
   }
+
+  // Query custom string
+  rknn3_custom_string custom_string;
+  memset(&custom_string, 0, sizeof(custom_string));
+  ret = rknn3_query(ctx, RKNN3_QUERY_CUSTOM_STRING, &custom_string, sizeof(custom_string));
+  if (ret != RKNN3_SUCCESS) {
+    printf("rknn3_query custom string failed! ret=%d\n", ret);
+    goto cleanup;
+  }
+  printf("Custom String: %s\n", custom_string.string);
 
   if (setup_kvcache_mems(ctx, &kvcache_mems) != RKNN3_SUCCESS) {
     goto cleanup;

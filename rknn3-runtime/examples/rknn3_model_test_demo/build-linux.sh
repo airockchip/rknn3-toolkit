@@ -24,13 +24,52 @@ while getopts ":t:a:b" opt; do
   esac
 done
 
+# x86_64: PC direct connection to RK182X (no cross-compiler needed)
+if [[ "${TARGET_ARCH}" == "x86_64" ]]; then
+  export CC=gcc
+  export CXX=g++
+
+  if [[ -z ${BUILD_TYPE} ]];then
+    BUILD_TYPE=Release
+  fi
+
+  TARGET_PLATFORM=PC_linux_x86_64
+  ROOT_PWD=$( cd "$( dirname $0 )" && cd -P "$( dirname "$SOURCE" )" && pwd )
+  BUILD_DIR=${ROOT_PWD}/build/build_${TARGET_PLATFORM}_${BUILD_TYPE}
+
+  echo "==================================="
+  echo "TARGET_SOC=PC"
+  echo "TARGET_ARCH=${TARGET_ARCH}"
+  echo "BUILD_TYPE=${BUILD_TYPE}"
+  echo "BUILD_DIR=${BUILD_DIR}"
+  echo "CC=${CC}"
+  echo "CXX=${CXX}"
+  echo "==================================="
+
+  if [[ ! -d "${BUILD_DIR}" ]]; then
+    mkdir -p ${BUILD_DIR}
+  fi
+
+  cd ${BUILD_DIR}
+  cmake ../.. \
+      -DCMAKE_SYSTEM_NAME=Linux \
+      -DCMAKE_SYSTEM_PROCESSOR=${TARGET_ARCH} \
+      -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+      -DCMAKE_C_COMPILER=${CC} \
+      -DCMAKE_CXX_COMPILER=${CXX}
+  make -j4
+  make install
+  exit 0
+fi
+
 if [ -z ${TARGET_SOC} ];then
   echo "$0 -t <target> -a <arch> [-b <build_type>]"
   echo ""
-  echo "    -t : target (rk3588/rk3576/rk3572)"
-  echo "    -a : arch (aarch64)"
+  echo "    -t : target (rk3588/rk3576/rk3572, required for aarch64)"
+  echo "    -a : arch (aarch64/x86_64)"
   echo "    -b : build_type(Debug/Release)"
   echo "such as: $0 -t rk3588 -a aarch64 -b Release"
+  echo "        $0 -a x86_64 -b Release"
   echo ""
   exit -1
 fi

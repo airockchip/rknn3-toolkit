@@ -121,6 +121,16 @@ cd ../cpp
 
 > 需指定环境变量`GCC_COMPILER` 指向 aarch64 交叉编译工具链前缀（`.../bin/aarch64-linux-gnu`），脚本据此定位 `gcc`/`g++`。
 
+**Linux x86_64（PC 直连 RK182X）**
+
+```bash
+cd ../cpp
+./build-linux.sh -a x86_64 -b Release
+# 产物自动安装到 ../install/
+```
+
+> 无需交叉编译器，在 PC 上直接本机编译。
+
 **Android arm64-v8a（Android 设备运行）**
 
 ```bash

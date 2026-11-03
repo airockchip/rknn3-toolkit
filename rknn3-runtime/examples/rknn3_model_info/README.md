@@ -12,12 +12,21 @@ export GCC_COMPILER=~/opt/gcc-linaro-7.5.0-2019.12-x86_64_aarch64-linux-gnu/bin/
 ./build-linux.sh -t rk3588 -a aarch64 -b Release
 ```
 
+### Linux x86_64 (PC direct connection to RK182X)
+
+No cross-compiler needed, build natively on the PC:
+
+```sh
+./build-linux.sh -a x86_64 -b Release
+```
+
 ## Libraries in the install Directory
 
 After building and running `make install`, the following libraries are installed under `install/rknn3_model_info_Linux/lib` depending on the platform:
 
 - RK3576 / RK3588: `librknn3_api.so` + `librknn3_api_rkcp.so`
 - RK3572: `librknn3_api.so` + `librknn3_api_native.so`
+- x86_64 PC: `librknn3_api.so` + `librknn3_api_rkcp.so`
 
 ## Deploy to the Board
 

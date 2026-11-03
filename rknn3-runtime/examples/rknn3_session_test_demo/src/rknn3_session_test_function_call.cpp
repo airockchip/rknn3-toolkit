@@ -200,7 +200,6 @@ int main(int argc, char** argv)
   rknn3_test_session_userdata_t session_userdata;
   rknn3_llm_param               params;
   RKLLMRunState                 state;
-  rknn3_lora                    loras_enabled[RKNN3_MAX_LORA_NUM];
   rknn3_llm_config              llm_config;
   rknn3_kvcache_policy          kvcache_policy = RKNN3_KVCACHE_POLICY_NORMAL;
   rknn3_kvcache_policy_param    kvcache_policy_param;
@@ -217,12 +216,10 @@ int main(int argc, char** argv)
   memset(&params, 0, sizeof(params));
   memset(&state, 0, sizeof(state));
   memset(&llm_config, 0, sizeof(llm_config));
-  memset(loras_enabled, 0, sizeof(loras_enabled));
   memset(&kvcache_policy_param, 0, sizeof(kvcache_policy_param));
   memset(llm_inputs, 0, sizeof(llm_inputs));
   memset(&llm_infer_param, 0, sizeof(llm_infer_param));
   memset(&session_userdata, 0, sizeof(session_userdata));
-  state.loras_enabled = loras_enabled;
 
   std::string function_tools =
     R"([{"type": "function", "function": {"name": "get_current_temperature", "description": "Get current temperature at a location.", "parameters": {"type": "object", "properties": {"location": {"type": "string", "description": "The location to get the temperature for, in the format \"City, State, Country\"."}, "unit": {"type": "string", "enum": ["celsius", "fahrenheit"], "description": "The unit to return the temperature in. Defaults to \"celsius\"."}}, "required": ["location"]}}},{"type": "function", "function": {"name": "get_temperature_date", "description": "Get temperature at a location and date.", "parameters": {"type": "object", "properties": {"location": {"type": "string", "description": "The location to get the temperature for, in the format \"City, State, Country\"."}, "date": {"type": "string", "description": "The date to get the temperature for, in the format \"Year-Month-Day\"."}, "unit": {"type": "string", "enum": ["celsius", "fahrenheit"], "description": "The unit to return the temperature in. Defaults to \"celsius\"."}}, "required": ["location", "date"]}}}])";
@@ -332,7 +329,7 @@ int main(int argc, char** argv)
     }
 
     if (state.n_total_tokens >= (state.n_max_tokens - max_new_tokens)) {
-      ret = rknn3_session_clear_kvcache(session_userdata.session, RKNN3_KVCACHE_CLEAR_ALL);
+      ret = rknn3_session_clear_kvcache(session_userdata.session, RKNN3_KVCACHE_CLEAR_ALL, nullptr);
       if (ret != RKNN3_SUCCESS) {
         printf("rknn3_session_clear_kvcache failed, ret=%d\n", ret);
         goto exit;
@@ -368,7 +365,7 @@ int main(int argc, char** argv)
     print_run_state(&state, true);
 
     if (state.n_total_tokens >= (state.n_max_tokens - max_new_tokens)) {
-      ret = rknn3_session_clear_kvcache(session_userdata.session, RKNN3_KVCACHE_CLEAR_ALL);
+      ret = rknn3_session_clear_kvcache(session_userdata.session, RKNN3_KVCACHE_CLEAR_ALL, nullptr);
       if (ret != RKNN3_SUCCESS) {
         printf("rknn3_session_clear_kvcache failed, ret=%d\n", ret);
         goto exit;

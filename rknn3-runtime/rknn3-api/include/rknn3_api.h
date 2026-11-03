@@ -44,6 +44,8 @@ extern "C" {
 #define RKNN3_ERR_DECRYPT_FAILED -16           /** < model decryption failed (key mismatch or data corrupted). */
 #define RKNN3_ERR_WEIGHT_LOAD_NOT_PREPARED -17 /** < streaming weight load not prepared, call rknn3_model_init first. */
 #define RKNN3_ERR_INCOMPATIBLE_VERSION -18     /** < version mismatch between librknn3_api and rknn3_transfer_proxy / server(firmware for co-processor or rknn3_server for non-co-processor), all three components must be same version. */
+#define RKNN3_ERR_MATMUL_INVALID_STATE -19      /** < the MatMul handle state does not allow this operation. */
+#define RKNN3_ERR_MATMUL_COMPLETION_UNKNOWN -20 /** < a MatMul task may still access memory; retain its handle, parent context and A/B/C until destroy succeeds. */
 
 /**
  * @brief Warning codes returned by RKNN3 API functions
@@ -62,7 +64,12 @@ extern "C" {
 #define RKNN3_MAX_SPECIAL_EOS_ID_NUM 64            /* maximum number of special End-Of-Sequence (EOS) token. */
 
 #define RKNN3_MAX_KVCACHE_LEN_GROUPS 16
+
 #define RKNN3_MAX_ATTENTION_TYPE_NUM 3
+#define RKNN3_MAX_CACHE_PAGE_TYPES 16
+
+#define RKNN3_MAX_MROPE_SECTION_LEN 8     /* maximum number of mrope section elements. */
+#define RKNN3_MAX_ATTENTION_CONFIG_NUM 32 /* maximum number of attention configs. */
 
 /*
     Definition for device id
@@ -118,6 +125,10 @@ typedef enum _rknn3_query_cmd
 
   RKNN3_QUERY_KVCACHE_LEN_GROUP_INFO = 23, /** < query the kvcache length group info (group count, per-group per-core kvcache sizes) **/
 
+  RKNN3_QUERY_KVCACHE_PAGE_INFO = 24, /** < query rknn3_kvcache_page_info for one core. */
+
+  RKNN3_QUERY_ATTENTION_CONFIG = 25, /** < query all rknn3_attention_config entries. */
+
   RKNN3_QUERY_CMD_MAX
 } rknn3_query_cmd;
 
@@ -140,8 +151,9 @@ typedef enum _rknn3_tensor_type
   RKNN3_TENSOR_INT4,         /** < data type is int4. */
   RKNN3_TENSOR_FLOAT8E4M3FN, /** < data type is float8e4m3fn. */
   RKNN3_TENSOR_BFLOAT16,     /** < data type is bfloat16. */
-  RKNN3_TENSOR_FLOAT8E8M0,        /** < data type is float8e8m0. */
-  RKNN3_TENSOR_FLOAT4E2M1,        /** < data type is float4e2m1 (fp4). */
+  RKNN3_TENSOR_FLOAT8E8M0,   /** < data type is float8e8m0. */
+  RKNN3_TENSOR_FLOAT4E2M1,   /** < data type is float4e2m1 (fp4). */
+  RKNN3_TENSOR_INT6,         /** < data type is int6. */
 
   RKNN3_TENSOR_TYPE_MAX
 } rknn3_tensor_type;
@@ -175,7 +187,7 @@ typedef enum _rknn3_tensor_layout
   RKNN3_TENSOR_CHWN,       /** < reserved */
   RKNN3_TENSOR_HWIO,       /** < reserved */
   RKNN3_TENSOR_OIHW,       /** < reserved */
-  RKNN3_TENSOR_O1I1HWI2O2, /** < reserved */
+  RKNN3_TENSOR_O1I1HWI2O2, /** < packed Weight layout */
 
   RKNN3_TENSOR_LAYOUT_MAX
 } rknn3_tensor_layout;
@@ -287,11 +299,13 @@ typedef enum
  * Enumerates the different policies for clearing the key-value cache:
  * - RKNN3_KVCACHE_CLEAR_ALL: Completely clears all KV cache entries
  * - RKNN3_KVCACHE_KEEP_SYSTEM_PROMPT: Clears KV cache while preserving system prompt entries
+ * - RKNN3_KVCACHE_KEEP_N_TOKENS: Clears KV cache but keep N tokens
  */
 typedef enum
 {
   RKNN3_KVCACHE_CLEAR_ALL = 0,      /**< Clear all KV cache entries */
   RKNN3_KVCACHE_KEEP_SYSTEM_PROMPT, /**< Clear KV cache but keep system prompt entries */
+  RKNN3_KVCACHE_KEEP_N_TOKENS,      /**< Clear KV cache but keep N tokens */
 } rknn3_kvcache_clear_policy;
 
 /**
@@ -437,6 +451,83 @@ typedef struct _rknn3_tensor_memory
   void*          priv_data; /** < the private data of tensor buffer. */
   rknn3_mem_type mem_type;  /** < the memory type of tensor buffer. */
 } rknn3_tensor_mem;
+
+/**
+ * @brief Attention configuration returned by RKNN3_QUERY_ATTENTION_CONFIG.
+ *
+ * Query RKNN3_QUERY_LLM_CONFIG first to obtain n_attention_configs, then pass
+ * an array with that many entries to RKNN3_QUERY_ATTENTION_CONFIG.
+ */
+typedef struct _rknn3_attention_config
+{
+  char                       mask_name[RKNN3_MAX_NAME_LEN];
+  int32_t                    kvcache_buffer_len;
+  bool                       kvcache_realtime;
+  rknn3_kvcache_dtype        kvcache_dtype;
+  rknn3_kvcache_store_method kvcache_store_method;
+  int32_t                    kvcache_group_size;
+  int32_t                    kvcache_residual_depth;
+  int32_t                    sliding_window_size;
+  rknn3_attention_type       attention_type;
+  char                       position_name[RKNN3_MAX_NAME_LEN];
+  int32_t                    max_position_embeddings;
+  bool                       position_embeddings_host_storage;
+  char                       mrope_type[RKNN3_MAX_NAME_LEN];
+  int32_t                    mrope_section[RKNN3_MAX_MROPE_SECTION_LEN];
+  int32_t                    n_mrope_section;
+  char                       mrope_new_id_name[RKNN3_MAX_NAME_LEN];
+  int32_t                    kvcache_buffer_lens[RKNN3_MAX_KVCACHE_LEN_GROUPS];
+  int32_t                    n_kvcache_buffer_lens;
+  uint32_t                   tokens_per_page;
+  uint32_t                   rollback_tokens_align;
+} rknn3_attention_config;
+
+
+/** Cache category values match the model schema. */
+typedef enum _rknn3_page_cache_type {
+  RKNN3_PAGE_CACHE_GENERAL = 11,
+  RKNN3_PAGE_CACHE_FULL_ATTENTION = 12,
+  RKNN3_PAGE_CACHE_SLIDING_ATTENTION = 13,
+  RKNN3_PAGE_CACHE_LINEAR_ATTENTION = 14,
+  RKNN3_PAGE_CACHE_CONV_STREAMING = 15,
+  RKNN3_PAGE_CACHE_FULL_RESIDUAL = 17,
+  RKNN3_PAGE_CACHE_SLIDING_RESIDUAL = 18
+} rknn3_page_cache_type;
+
+typedef struct _rknn3_cache_page_attr {
+  int32_t  cache_type;
+  uint64_t page_size;       /**< Bytes per page. */
+  uint32_t max_page_num;    /**< Compiled capacity, never changed by binding/growth. */
+  uint8_t  reserved[32];
+} rknn3_cache_page_attr;
+
+/** Query the current model shape. Old non-paged models return n_cache_types == 0. */
+typedef struct _rknn3_kvcache_page_info {
+  int32_t  core_id;          /**< Input: physical core ID. */
+  uint32_t max_request_num; /**< Maximum number of concurrent requests supported by continuous batching. */
+  uint32_t n_cache_types;
+  rknn3_cache_page_attr caches[RKNN3_MAX_CACHE_PAGE_TYPES];
+  uint8_t reserved[128];    /**< Reserved for future extension. */
+} rknn3_kvcache_page_info;
+
+typedef struct _rknn3_kvcache_page_binding {
+  int32_t  core_id;
+  int32_t  cache_type;
+  uint32_t request_index;
+  uint32_t n_pages;                     /**< Prefix length; 0 unbinds this entry. */
+  const rknn3_tensor_mem* const* pages; /**< Each page is one page_size-byte allocation on core_id. */
+  uint8_t  reserved[64];
+} rknn3_kvcache_page_binding;
+
+/** Replace the listed bindings after full-shape validation, without copying page contents.
+ * Validation failure preserves old bindings. A page-table write failure unbinds every key
+ * in this batch; in either failure case the caller may release the pages from this batch.
+ * The caller owns successfully bound pages and must keep them alive until unbound. Call only
+ * while this context is idle. Unlisted entries remain bound; n_pages == 0 unbinds one key.
+ * Set internal/weight memory before binding because those APIs may rewrite command memory.
+ * Paged models only; no cache length groups.
+ */
+int rknn3_set_kvcache_pages(rknn3_context context, const rknn3_kvcache_page_binding* bindings, uint32_t n_bindings);
 
 /**
  * @brief Image format enumeration
@@ -621,7 +712,8 @@ typedef struct _rknn3_llm_config
   uint8_t                    rope_cache_host_storage; /** < rope cache host storage */  
   uint32_t                   n_attention_kvcache_lens; /** < number of valid attention kvcache lens configs */
   rknn3_attention_kvcache_lens attention_kvcache_lens[RKNN3_MAX_ATTENTION_TYPE_NUM]; /** < kvcache lens configs for attention types */
-  uint8_t                    reserved[127];           /** < reserved */
+  uint32_t                   n_attention_configs;      /** < number of rknn3_attention_config entries */
+  uint8_t                    reserved[123];           /** < reserved */
 } rknn3_llm_config;
 
 /**
@@ -819,6 +911,24 @@ typedef struct _rknn3_kvcache_policy_param
 } rknn3_kvcache_policy_param;
 
 /**
+ * @struct rknn3_kvcache_clear_policy_param
+ * @brief Defines parameters for the KV cache clear policy.
+ */
+typedef struct _rknn3_kvcache_clear_policy_param
+{
+  /**
+   * @struct rknn3_kvcache_clear_policy_param_keep_n_tokens
+   * @brief Parameters for RKNN3_KVCACHE_KEEP_N_TOKENS.
+   */
+  struct
+  {
+    uint32_t n_tokens; /**< Number of tokens to keep in the KV cache. */
+  } keep_n_tokens;
+
+  uint8_t reserved[64]; /**< reserved */
+} rknn3_kvcache_clear_policy_param;
+
+/**
  * @struct rknn3_llm_multimodal_tensor
  * @brief Represents multimodal input (e.g., text, image, audio, and video).
  */
@@ -910,6 +1020,64 @@ typedef struct
 } rknn3_llm_input;
 
 /**
+ * @enum rknn3_grammar_type
+ * @brief Grammar type for structured output constraint.
+ */
+typedef enum {
+    RKNN3_GRAMMAR_JSON_SCHEMA  = 0, /**< JSON Schema string */
+    RKNN3_GRAMMAR_EBNF         = 1, /**< EBNF grammar string */
+    RKNN3_GRAMMAR_BUILTIN_JSON = 2, /**< Built-in JSON grammar (any valid JSON) */
+    RKNN3_GRAMMAR_REGEX        = 3, /**< Regular expression */
+    RKNN3_GRAMMAR_STRUCTURAL_TAG = 4, /**< Structural tag (JSON serialized) */
+} rknn3_grammar_type;
+
+/**
+ * @struct _rknn3_grammar_config
+ * @brief Configuration for grammar engine initialization (context level).
+ * @details Carries the encoded vocabulary (token_id -> byte string) built by
+ *          the caller, plus stop token ids. The runtime uses this to build
+ *          the XGrammar TokenizerInfo + GrammarCompiler in one step.
+ *          encoded_vocab layout: for each token i in [0, vocab_size):
+ *            int32_t len_i, then len_i bytes of the token's string representation.
+ */
+typedef struct _rknn3_grammar_config {
+    int32_t       vocab_size;        /**< Number of tokens in encoded_vocab. */
+    const uint8_t* encoded_vocab;   /**< Serialized vocab blob (see layout above). */
+    int32_t       encoded_vocab_len;/**< Total bytes in encoded_vocab. */
+    int32_t       n_stop_tokens;    /**< Number of stop (EOS) token ids. */
+    const int32_t* stop_tokens;     /**< Array of n_stop_tokens stop token ids. */
+} rknn3_grammar_config;
+
+/**
+ * @typedef rknn3_grammar
+ * @brief Opaque handle to a per-session grammar object.
+ * @details Holds the grammar rule string/type and per-request GrammarMatcher state.
+ *          Shares the context-level TokenizerInfo / GrammarCompiler. Created via
+ *          rknn3_grammar_create(), destroyed via rknn3_grammar_destroy().
+ */
+typedef struct _rknn3_grammar rknn3_grammar;
+
+/**
+ * @struct rknn3_grammar_set_options
+ * @brief Compile options for rknn3_grammar_set() / rknn3_session_set_grammar().
+ * @details -1 (int) or NULL (string) means "use the xgrammar default". A NULL
+ *          options pointer is equivalent to all defaults. Options are applied at
+ *          set time (each set recompiles the grammar).
+ */
+typedef struct _rknn3_grammar_set_options {
+    int  any_whitespace;             /**< JSON Schema: -1=default(true), 0=false, 1=true */
+    int  indent;                     /**< JSON Schema: -1=default(None), >=0=indent spaces */
+    int  strict_mode;                /**< JSON Schema: -1=default(true), 0=false, 1=true */
+    int  max_whitespace_cnt;         /**< JSON Schema: -1=default(None), >=0=max whitespace between elements */
+    int  any_order;                  /**< JSON Schema: -1=default(false), 0=false, 1=true */
+    const char* item_separator;      /**< JSON Schema: NULL=default, else element separator (comma) */
+    const char* key_value_separator; /**< JSON Schema: NULL=default, else key-value separator (colon) */
+    const char* root_rule_name;      /**< EBNF: NULL=default("root") */
+} rknn3_grammar_set_options;
+
+#define RKNN3_GRAMMAR_SET_OPTIONS_INIT { -1, -1, -1, -1, -1, NULL, NULL, NULL }
+
+/**
  * @struct rknn3_llm_infer_param
  * @brief Structure for defining parameters during inference.
  */
@@ -923,7 +1091,11 @@ typedef struct
                                    Suitable for prefill-only scenario and do not want to get prefill output tokens.
                                    Usually, when prefill_only is set to true, disable_sampling is also set to true (Setting disable_sampling alone has no effect).
                                    Such as for embedding and reranker models only want get embeddings without sampling. */
-  uint8_t reserved[128];      /**< Reserved bytes for future use. */
+  bool    keep_grammar;       /**< Flag to keep grammar matcher state across runs. When enabled, the per-request
+                                   grammar matcher is NOT re-initialized at the start/end of each rknn3_session_run,
+                                   so the grammar state is retained for continuous generation across multiple runs.
+                                   Default is false. */
+  uint8_t reserved[127];      /**< Reserved bytes for future use. */
 } rknn3_llm_infer_param;
 
 /**
@@ -1068,7 +1240,7 @@ typedef struct
   const int32_t*       output_tokens;    /**< Pointer to the array of tokens output from the model. Should not be freed by the user. */
   rknn3_kvcache_policy kvcache_policy;   /**< KV cache policy. */
   int32_t              n_loras_enabled;  /**< Number of Lora enabled. */
-  rknn3_lora*          loras_enabled;    /**< Lora enabled. */
+  rknn3_lora           loras_enabled[RKNN3_MAX_LORA_NUM];   /**< Lora enabled. */
 } RKLLMRunState;
 
 /**
@@ -1101,6 +1273,8 @@ inline static const char* rknn3_get_type_string(rknn3_tensor_type type)
     return "BOOL";
   case RKNN3_TENSOR_INT4:
     return "INT4";
+  case RKNN3_TENSOR_INT6:
+    return "INT6";
   case RKNN3_TENSOR_FLOAT8E4M3FN:
     return "FLOAT8E4M3FN";
   case RKNN3_TENSOR_BFLOAT16:
@@ -1201,6 +1375,21 @@ int rknn3_init(rknn3_context* context, rknn3_init_extend* init_extend);
  *         - <0: Error code
  */
 int rknn3_load_model_from_path(rknn3_context context, const char* model_path, const char* weight_path);
+
+/**
+ * @brief Load model from a path on the device-side filesystem (emmc).
+ *
+ * The model_path and weight_path refer to files on the device's filesystem,
+ * not the host's. The host sends the paths to the device (SRV), which reads
+ * and parses the model files locally.
+ *
+ * @param context The rknn3 context handle.
+ * @param model_path Path to the model file on the device filesystem.
+ * @param weight_path Path to the weight file on the device filesystem.
+ *                    Pass NULL for streaming weight loading mode.
+ * @return int RKNN3_SUCCESS on success, error code otherwise.
+ */
+int rknn3_load_model_from_device(rknn3_context context, const char* model_path, const char* weight_path);
 
 /**
  * @brief Load RKNN3 model from memory data.
@@ -1498,7 +1687,10 @@ int rknn3_find_devices(rknn3_devices* pdevs);
 rknn3_session* rknn3_session_init(rknn3_context context, rknn3_llm_param* params, int n_params);
 
 /**
- * @brief Initialize LoRA support for an RKNN3 context by loading metadata from a weight file.
+ * @brief Register a LoRA weight file with an RKNN3 context.
+ *
+ * This function may be called repeatedly to register multiple weight files.
+ * Adapter names must be unique across all registered files.
  *
  * @param context The RKNN3 context handle
  * @param lora_weight_path Path to the LoRA weight file
@@ -1507,7 +1699,10 @@ rknn3_session* rknn3_session_init(rknn3_context context, rknn3_llm_param* params
 int rknn3_lora_init(rknn3_context context, const char* lora_weight_path);
 
 /**
- * @brief Initialize LoRA support for an RKNN3 context from an in-memory buffer.
+ * @brief Register an in-memory LoRA weight source with an RKNN3 context.
+ *
+ * This function may be called repeatedly to register multiple weight buffers.
+ * Each buffer must remain valid until the RKNN3 context is released.
  *
  * @param context The RKNN3 context handle
  * @param weight_data    Pointer to the LoRA weight data buffer (non-owning)
@@ -1540,6 +1735,8 @@ int rknn3_lora_unload(rknn3_context context, rknn3_lora* lora);
  * @param context The RKNN3 context handle
  * @param lora    Pointer to the LoRA adapter descriptor to enable
  * @return int Return status: 0 on success, negative error code on failure
+ * @note Different adapters mapped to the same pattern slot cannot be enabled
+ *       together in the context-level execution scope.
  */
 int rknn3_lora_enable(rknn3_context context, rknn3_lora* lora);
 
@@ -1560,6 +1757,9 @@ int rknn3_lora_disable(rknn3_context context, rknn3_lora* lora);
  * @return int Return status:
  *         - 0: Success
  *         - Other: Error code
+ * @note Different adapters mapped to the same pattern slot cannot be enabled
+ *       together in one session. Different sessions may reuse that slot; the
+ *       runtime reapplies each session's LoRA binding before inference.
  */
 int rknn3_session_enable_lora(rknn3_session* session, rknn3_lora* lora);
 
@@ -1594,9 +1794,10 @@ int rknn3_session_set_kvcache_policy(rknn3_session* session, rknn3_kvcache_polic
  *
  * @param session Pointer to the RKNN3 session handle
  * @param clear Policy for clearing KV-Cache, defines how the cache should be cleared
+ * @param param Parameters for the KV-Cache clear policy. Required when clear is RKNN3_KVCACHE_KEEP_N_TOKENS
  * @return int Returns 0 on success, negative value on failure
  */
-int rknn3_session_clear_kvcache(rknn3_session* session, rknn3_kvcache_clear_policy clear);
+int rknn3_session_clear_kvcache(rknn3_session* session, rknn3_kvcache_clear_policy clear, rknn3_kvcache_clear_policy_param* param);
 
 /**
  * @brief Load the KV-Cache from a specified path
@@ -2022,6 +2223,131 @@ int rknn3_im_mem_destroy(rknn3_context context, rknn3_im_mem* im_mem);
 int rknn3_im_cvt_color(rknn3_context context, rknn3_im_mem* src, rknn3_im_mem* dst);
 
 /************************************end rknn3 image processing interfaces*************************************/
+
+/************************************rknn3 structured output (grammar) interfaces**********************************/
+
+/**
+ * @brief Initialize the grammar engine at the context (model) level.
+ *
+ * @param context RKNN3 context handle.
+ * @param config Pointer to the grammar config carrying the encoded vocabulary
+ *               (token_id -> byte string), vocab_size, and stop token ids.
+ * @return 0 on success, negative value on failure.
+ *
+ * @details Builds the XGrammar TokenizerInfo + GrammarCompiler from the
+ *          encoded_vocab in config. This is a one-time, context-level operation
+ *          shared by all sessions. The caller is responsible for building
+ *          encoded_vocab (e.g. by iterating token ids via the tokenizer's
+ *          TokenToPiece function) before calling this API.
+ */
+int rknn3_init_grammar(rknn3_context context, const rknn3_grammar_config* config);
+
+/**
+ * @brief Create a grammar handle bound to the context.
+ *
+ * @param context RKNN3 context handle (must have called rknn3_init_grammar()).
+ * @return Non-NULL rknn3_grammar handle on success, NULL on failure.
+ *
+ * @details The handle shares the context-level TokenizerInfo / GrammarCompiler and
+ *          holds its own grammar rule and per-request GrammarMatcher state. Each
+ *          session should own its own handle to keep constraints independent.
+ */
+rknn3_grammar* rknn3_grammar_create(rknn3_context context);
+
+/**
+ * @brief Destroy a grammar handle and release per-handle resources.
+ *
+ * @param context RKNN3 context handle.
+ * @param grammar Grammar handle to destroy (may be NULL, no-op).
+ * @return 0 on success, negative value on failure.
+ *
+ * @details Does NOT affect context-level vocabulary/compiler. Safe to call after
+ *          the owning session is destroyed.
+ */
+int rknn3_grammar_destroy(rknn3_context context, rknn3_grammar* grammar);
+
+/**
+ * @brief Set grammar rule on a handle. Takes effect on the next rknn3_session_run().
+ *
+ * @param grammar Grammar handle.
+ * @param grammar_str Grammar string (JSON Schema / EBNF / Regex). Pass NULL or empty
+ *                    string together with RKNN3_GRAMMAR_BUILTIN_JSON to enable any
+ *                    valid JSON; for other types an empty/NULL string disables the
+ *                    constraint.
+ * @param grammar_type Type of the grammar string (see rknn3_grammar_type).
+ * @return 0 on success, negative value on failure.
+ */
+int rknn3_grammar_set(rknn3_grammar* grammar, const char* grammar_str, rknn3_grammar_type grammar_type, const rknn3_grammar_set_options* options);
+
+/**
+ * @brief Clear the grammar rule on a handle and restore unconstrained generation.
+ *
+ * @param grammar Grammar handle.
+ * @return 0 on success, negative value on failure.
+ *
+ * @details The handle is retained so a subsequent rknn3_grammar_set() can re-arm it.
+ */
+int rknn3_grammar_clear(rknn3_grammar* grammar);
+
+/**
+ * @brief Apply the grammar bitmask to logits (set illegal token logits to -inf).
+ *
+ * @param grammar Grammar handle.
+ * @param logits Pointer to the float16 logits array (modified in place).
+ * @param vocab_size Vocabulary size (length of the logits array).
+ * @param output_idx Output index for multi-output scenarios (single output: pass 0).
+ * @return 0 on success, negative value on failure.
+ *
+ * @details Must be called BEFORE sampling the next token. Internally fills the
+ *          bitmask via GrammarMatcher::FillNextTokenBitmask and applies it with
+ *          ApplyTokenBitmaskInplaceCPU.
+ */
+int rknn3_grammar_apply_mask(rknn3_grammar* grammar, float16* logits, int32_t vocab_size, int32_t output_idx);
+
+/**
+ * @brief Notify the grammar handle that a token was accepted, advancing matcher state.
+ *
+ * @param grammar Grammar handle.
+ * @param token_id The token id that was sampled and accepted.
+ * @param output_idx Output index for multi-output scenarios (single output: pass 0).
+ * @return 0 on success (token was legal), negative value if the token was rejected
+ *         by the grammar (mismatch between mask and sampler).
+ *
+ * @details Must be called AFTER sampling and accepting the token.
+ */
+int rknn3_grammar_accept_token(rknn3_grammar* grammar, int32_t token_id, int32_t output_idx);
+
+/**
+ * @brief Reset the grammar matcher state (e.g. when clearing conversation history).
+ *
+ * @param grammar Grammar handle.
+ * @return 0 on success, negative value on failure.
+ */
+int rknn3_grammar_reset(rknn3_grammar* grammar);
+
+/**
+ * @brief Convenience: set grammar on a session (internally creates/uses a grammar handle).
+ *
+ * @param session Pointer to the RKNN3 session handle.
+ * @param grammar_str Grammar string (see rknn3_grammar_set() semantics).
+ * @param grammar_type Type of the grammar string.
+ * @return 0 on success, negative value on failure.
+ *
+ * @details Requires rknn3_init_grammar() to have been called on the context. The
+ *          session internally owns a rknn3_grammar handle; rknn3_session_run() will
+ *          automatically apply the mask and accept tokens during decode.
+ */
+int rknn3_session_set_grammar(rknn3_session* session, const char* grammar_str, rknn3_grammar_type grammar_type, const rknn3_grammar_set_options* options);
+
+/**
+ * @brief Convenience: clear grammar on a session (restore unconstrained generation).
+ *
+ * @param session Pointer to the RKNN3 session handle.
+ * @return 0 on success, negative value on failure.
+ */
+int rknn3_session_clear_grammar(rknn3_session* session);
+
+/************************************end rknn3 structured output (grammar) interfaces******************************/
 
 #ifdef __cplusplus
 } // extern "C"

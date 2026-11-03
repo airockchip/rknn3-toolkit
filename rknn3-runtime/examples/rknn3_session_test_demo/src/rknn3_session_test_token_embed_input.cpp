@@ -54,7 +54,6 @@ int main(int argc, char** argv)
   rknn3_llm_param               params;
   int                           n_params = 1;
   RKLLMRunState                 state;
-  rknn3_lora                    loras_enabled[RKNN3_MAX_LORA_NUM];
   rknn3_llm_config              llm_config;
   rknn3_kvcache_policy          kvcache_policy = RKNN3_KVCACHE_POLICY_NORMAL;
   rknn3_kvcache_policy_param    kvcache_policy_param;
@@ -71,9 +70,7 @@ int main(int argc, char** argv)
   memset(&params, 0, sizeof(params));
   memset(&state, 0, sizeof(state));
   memset(&llm_config, 0, sizeof(llm_config));
-  memset(loras_enabled, 0, sizeof(loras_enabled));
   memset(&kvcache_policy_param, 0, sizeof(kvcache_policy_param));
-  state.loras_enabled = loras_enabled;
   memset(llm_inputs, 0, sizeof(llm_inputs));
   memset(&llm_infer_param, 0, sizeof(llm_infer_param));
   memset(&session_userdata, 0, sizeof(session_userdata));
@@ -268,7 +265,7 @@ int main(int argc, char** argv)
 
     // clear kvcache
     if (state.n_total_tokens >= (state.n_max_tokens - max_new_tokens)) {
-      ret = rknn3_session_clear_kvcache(session_userdata.session, RKNN3_KVCACHE_CLEAR_ALL);
+      ret = rknn3_session_clear_kvcache(session_userdata.session, RKNN3_KVCACHE_CLEAR_ALL, nullptr);
       if (ret != RKNN3_SUCCESS) {
         printf("rknn3_session_clear_kvcache failed, ret=%d\n", ret);
         goto exit;

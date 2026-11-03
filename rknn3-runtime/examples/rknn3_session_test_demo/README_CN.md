@@ -1,3 +1,4 @@
+
 # Session 测试用例说明
 此工程提供以下 Session 测试用例：
 
@@ -13,6 +14,8 @@
    保存 KVCache Checkpoint 的示例，用于演示如何在推理过程中保存 KVCache Checkpoint，适用于带有 linear attention 或者 sliding attention 的模型 (如 qwen3.5 和 gemma4 系列模型)，其他模型不会生效。
 6. rknn3_session_test_multi_session  
    多 Session 示例，在同一个 context 下创建多个 session（数量由 `NUM_SESSIONS` 宏控制，默认 2），分别使用不同的 max_context_len（从模型 full-attention kvcache buffer lengths 中获取）。每个 session 依次设置 NORMAL 和 SAVE_CHECKPOINT 两种 kvcache 策略，并进行多轮推理（轮数由 `NUM_ITERATIONS` 宏控制，默认 2），每轮推理后保存 kvcache checkpoint，下一轮推理前加载该 checkpoint，用于演示多 session 推理及 kvcache checkpoint 的保存与加载。
+7. rknn3_session_test_grammar  
+   结构化输出（XGrammar）评估示例，用于演示 JSON Schema / Builtin JSON / Regex / EBNF 等语法约束下的推理。每个用例使用相同的 prompt 分别在带语法约束和不带语法约束（基线）两种情况下运行，统计语法约束输出的准确率，并对比 TTFT / TPOT 以评估语法约束引入的解码开销。
 
 ## 运行命令与参数说明
 
@@ -38,6 +41,9 @@
 
 # Usage: ./rknn3_session_test_multi_session <rknn_path> <weight_path> <tokenizer.gguf> <embedding.bin> <max_context_len> <max_new_tokens> <core_mask> [keep_history] [ignore_eos_token] [key_path]
 ./rknn3_session_test_multi_session Qwen3.5-0.8B.rknn Qwen3.5-0.8B.weight Qwen3.5-0.8B.tokenizer.gguf Qwen3.5-0.8B.embed.bin 2048 512 0xff
+
+# Usage: ./rknn3_session_test_grammar <rknn_path> <weight_path> <tokenizer.gguf> <embedding.bin> <max_context_len> <max_new_tokens> <core_mask> [keep_history] [ignore_eos_token] [key_path]
+./rknn3_session_test_grammar Qwen2.5-0.5B.rknn Qwen2.5-0.5B.weight Qwen2.5-0.5B.tokenizer.gguf Qwen2.5-0.5B.embed.bin 2048 512 0xff
 ```
 
 ### 参数说明
@@ -192,3 +198,64 @@ rknn3_session_test.exe Qwen2.5-0.5B.rknn Qwen2.5-0.5B.weight Qwen2.5-0.5B.tokeni
 **注：**
 1. **Windows 平台下路径分隔符使用反斜杠 `\`，但在 Cygwin 终端中仍可使用正斜杠 `/`**
 2. **确保 DLL 文件所在的 lib 目录已添加到系统 PATH 环境变量中**
+
+# macOS 平台使用示例（Apple Silicon）
+
+## 前置条件
+
+- 安装 Xcode Command Line Tools：`xcode-select --install`
+- RK182X 板子通过 USB 线连接到 Mac，且系统正常启动
+
+## 编译
+
+```sh
+./build-macos.sh
+```
+
+编译产物位于 `install/rknn3_session_test_macos/`，包含以下测试程序：
+- `rknn3_session_test` — 通用 LLM 推理
+- `rknn3_session_test_eval_perf` — 性能评估 (TPS/TTFT)
+- `rknn3_session_test_function_call` — Function Calling
+- `rknn3_session_test_token_embed_input` — Token/Embed 输入
+- `rknn3_session_test_save_checkpoint` — KVCache Checkpoint 保存
+
+## 运行
+
+```sh
+# 1. 启动 proxy（一次即可，保持后台运行；日志写入 proxy.log）
+nohup ./rknn3_transfer_proxy/macos-arm64/rknn3_transfer_proxy > proxy.log 2>&1 &
+
+# 2. 进入安装目录
+cd install/rknn3_session_test_macos/
+
+# 3. 设置库路径
+export DYLD_LIBRARY_PATH=./lib
+
+# Usage: ./rknn3_session_test <rknn_path> <weight_path> <tokenizer.gguf> <embedding.bin> <max_context_len> <max_new_tokens> <core_mask>
+./rknn3_session_test Qwen2.5-0.5B.rknn Qwen2.5-0.5B.weight Qwen2.5-0.5B.tokenizer.gguf Qwen2.5-0.5B.embed.bin 2048 512 0xff
+
+# Usage: ./rknn3_session_test_token_embed_input <rknn_path> <weight_path> <tokenizer.gguf> <embedding.bin> <max_context_len> <max_new_tokens> <core_mask>
+./rknn3_session_test_token_embed_input Qwen2.5-0.5B.rknn Qwen2.5-0.5B.weight Qwen2.5-0.5B.tokenizer.gguf Qwen2.5-0.5B.embed.bin 2048 512 0xff
+
+# Usage: ./rknn3_session_test_eval_perf <rknn_path> <weight_path> <tokenizer.gguf> <embedding.bin> <max_context_len> <n_input_tokens> <max_new_tokens> <core_mask>
+./rknn3_session_test_eval_perf Qwen2.5-0.5B.rknn Qwen2.5-0.5B.weight Qwen2.5-0.5B.tokenizer.gguf Qwen2.5-0.5B.embed.bin 2048 128 128 0xff
+
+# Usage: ./rknn3_session_test_function_call <rknn_path> <weight_path> <tokenizer.gguf> <embedding.bin> <max_context_len> <max_new_tokens> <core_mask>
+./rknn3_session_test_function_call Qwen2.5-0.5B.rknn Qwen2.5-0.5B.weight Qwen2.5-0.5B.tokenizer.gguf Qwen2.5-0.5B.embed.bin 2048 512 0xff
+
+# Usage: ./rknn3_session_test_save_checkpoint <rknn_path> <weight_path> <tokenizer.gguf> <embedding.bin> <max_context_len> <max_new_tokens> <core_mask>
+./rknn3_session_test_save_checkpoint Qwen3.5-0.8B.rknn Qwen3.5-0.8B.weight Qwen3.5-0.8B.tokenizer.gguf Qwen3.5-0.8B.embed.bin 2048 512 0xff
+
+# 4. 测试结束后停止 proxy
+kill -TERM $(pgrep rknn3_transfer_proxy)
+```
+
+参数说明：
+- `rknn_path`: rknn 文件路径
+- `weight_path`: weight 文件路径
+- `tokenizer.gguf`: tokenizer.gguf 文件路径
+- `embedding.bin`: embedding.bin 文件路径
+- `max_context_len`: 模型转换时 `rknn.config` 中配置的 max_ctx_len 值
+- `n_input_tokens`: 输入的 token 数
+- `max_new_tokens`: 每次会话最多生成的 token 数
+- `core_mask`: 目前有 8 个核，对应 8 bit 数，使用哪一个核，就将哪一位置 1，例如使用核 0 和核 1，就将第 0 位和第 1 位置 1，对应的十六进制数是 0x3，core_mask 设置成 0x3

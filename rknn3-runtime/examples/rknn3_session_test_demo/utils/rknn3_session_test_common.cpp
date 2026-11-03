@@ -274,6 +274,14 @@ int get_embedding(struct embedding_info* embedding_info, const char* embedding_p
     embedding_info->fd = -1;
     return -1;
   }
+  if (vocab_size <= 0 || emb_st->st_size < (off_t)sizeof(float16))
+  {
+    printf("Invalid vocab_size %d or embedding file size %lld\n",
+           (int)vocab_size, (long long)emb_st->st_size);
+    close(embedding_info->fd);
+    embedding_info->fd = -1;
+    return -1;
+  }
   embedding_info->vocab_size    = vocab_size;
   embedding_info->embedding_dim = (emb_st->st_size / vocab_size) / sizeof(float16);
   return 0;
@@ -760,6 +768,7 @@ int setup_output_tensors(rknn3_context ctx, rknn3_tensor* output_tensors, int n_
       printf("malloc output_tensors[%d].attr failed\n", i);
       return -1;
     }
+    memset(output_tensors[i].attr, 0, sizeof(rknn3_tensor_attr));
     output_tensors[i].attr->index = output_tensors_index[i];
     ret                           = rknn3_query(ctx, RKNN3_QUERY_OUTPUT_ATTR, output_tensors[i].attr, sizeof(rknn3_tensor_attr));
     if (ret < 0) {

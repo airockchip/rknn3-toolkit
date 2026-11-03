@@ -13,12 +13,21 @@
 ./build-linux.sh -t rk3588 -a aarch64 -b Release
 ```
 
+### Linux x86_64（PC 直连 RK182X）
+
+无需交叉编译器，在 PC 上直接本机编译：
+
+```sh
+./build-linux.sh -a x86_64 -b Release
+```
+
 ## install 目录库文件说明
 
 编译并执行 `make install` 后，`install/rknn3_model_test_Linux/lib` 中会按平台安装以下库：
 
 - RK3576 / RK3588：`librknn3_api.so` + `librknn3_api_rkcp.so`
 - RK3572：`librknn3_api.so` + `librknn3_api_native.so`
+- x86_64 PC：`librknn3_api.so` + `librknn3_api_rkcp.so`
 
 ## 推送到板端
 
@@ -175,3 +184,44 @@ rknn3_model_test.exe resnet50v2_with_weight\resnet50v2.rknn resnet50v2_with_weig
 参数说明与 Linux 平台相同（见上文 1–11 条及注意事项）。
 
 **注：** Windows 平台下路径分隔符使用反斜杠 `\`，但在 Cygwin 终端中仍可使用正斜杠 `/`。
+
+# macOS 平台使用示例（Apple Silicon）
+
+## 前置条件
+
+- 安装 Xcode Command Line Tools：`xcode-select --install`
+- RK182X 板子通过 USB 线连接到 Mac，且系统正常启动
+
+## 编译
+
+```sh
+./build-macos.sh
+```
+
+编译产物位于 `install/rknn3_model_test_macos/`。
+
+## 运行
+
+```sh
+# 1. 启动 proxy（一次即可，保持后台运行；日志写入 proxy.log）
+nohup ./rknn3_transfer_proxy/macos-arm64/rknn3_transfer_proxy > proxy.log 2>&1 &
+
+# 2. 进入安装目录运行测试
+cd install/rknn3_model_test_macos/
+export DYLD_LIBRARY_PATH=./lib
+./rknn3_model_test model.rknn model.weight
+```
+
+**带输入输出精度对比：**
+
+```sh
+export DYLD_LIBRARY_PATH=./lib
+./rknn3_model_test model.rknn model.weight 0x1 in.npy out.npy
+```
+
+```sh
+# 3. 测试结束后停止 proxy
+kill -TERM $(pgrep rknn3_transfer_proxy)
+```
+
+> 参数说明与 Linux 平台相同（见上文 1–11 条及注意事项）。

@@ -17,10 +17,19 @@ Set `GCC_COMPILER`, then run:
 ./build-linux.sh -t rk3588 -a aarch64 -b Release
 ```
 
+### Linux x86_64 (PC direct connection to RK182X)
+
+No cross-compiler needed, build natively on the PC:
+
+```sh
+./build-linux.sh -a x86_64 -b Release
+```
+
 ### Libraries in `install/rknn3_model_test_Linux/lib`
 
 - RK3576 / RK3588: `librknn3_api.so` + `librknn3_api_rkcp.so`
 - RK3572: `librknn3_api.so` + `librknn3_api_native.so`
+- x86_64 PC: `librknn3_api.so` + `librknn3_api_rkcp.so`
 
 ### Deploy
 

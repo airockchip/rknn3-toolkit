@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## V1.2.0
+
+- Added the RKNN3 MCP model deployment assistant (Beta)
+- Added MoE (Mixture of Experts) support
+- Added PagedAttention support
+- Added support for exporting multiple separate LoRA weights
+- Added Grammar-constrained output support for LLMs
+- Added support for loading models from the coprocessor's eMMC
+- Added MatMul APIs for RK3572
+- Added Linux x86_64 coprocessor mode and macOS arm64 platform support
+- Added model custom information query support
+- Added W4BF16 exMatMul support
+- Added operators including Log, ReduceLogSumExp, Tan, Atan, CumSum, and LSTM/GRU
+- Added Ethernet support on Windows (RK182X coprocessor mode)
+- Improved LUT activation and exponential computation precision
+- Improved Windows USB communication efficiency
+- Improved LLM support on RK3572
+- Fixed a memory leak issue on RK3572 in certain scenarios
+- Fixed issues with Resize, AveragePool, Sub, Transpose, and TopK operators under certain configurations
+- Fixed RK182X Ethernet connection stability issues
+
+
 ## V1.1.0
 
 - Added RK182X multi-card cascade support
@@ -14,8 +36,10 @@
 - Optimized GPU memory usage during GRQ quantization
 - Updated the usage of external GRQ quantization
 - Changed the RKNN3 Toolkit model import method to use ONNX only (TensorFlow/TFLite/Caffe/DarkNet support removed)
+  
 
 ## V1.0.4
+
 - Added RK3572 platform support (Beta)
 - Added Windows platform support
 - Added Ethernet communication type support
@@ -38,6 +62,7 @@
 - Added GR00T model
 - Added PaddleOCR VL model
 - Added SmolVLM2 vision-language model
+
 
 ## v1.0.0
 
@@ -64,6 +89,7 @@
 - Optimized memory usage of large models and increased the maximum supported context length
 - Support for video/audio in multimodal models
 
+
 ## v0.3.0b0
 
 - Optimized SDK functionality and stability; fixed known bugs from the V0.2.0 release.
@@ -75,9 +101,11 @@
 - LLM inference KVCache now supports a sliding window, allowing the number of output tokens to exceed the maximum context length.
 - Support for USB communication.
 
+
 ## v0.2.0
 
 - Added support for the conversion and deployment of CNN, LLM, and VLM models.
+
 
 ## v0.1.0
 

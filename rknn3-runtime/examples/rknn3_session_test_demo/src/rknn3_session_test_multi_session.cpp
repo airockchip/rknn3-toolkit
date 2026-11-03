@@ -54,7 +54,6 @@ int main(int argc, char** argv)
   rknn3_test_session_userdata_t session_userdata[NUM_SESSIONS];
   rknn3_llm_param               params;
   RKLLMRunState                 state;
-  rknn3_lora                    loras_enabled[RKNN3_MAX_LORA_NUM];
   rknn3_llm_config              llm_config;
   rknn3_kvcache_policy          kvcache_policy = RKNN3_KVCACHE_POLICY_NORMAL;
   rknn3_kvcache_policy_param    kvcache_policy_param;
@@ -70,7 +69,7 @@ int main(int argc, char** argv)
   int                           n_attention_kvcache_lens           = 1;
   rknn3_attention_kvcache_lens* attention_kvcache_lens             = nullptr;
   int32_t                       n_full_attention_cache_buffer_lens = 1;
-  int32_t                       full_attention_cache_buffer_lens[RKNN3_MAX_KVCACHE_LEN_GROUPS];
+  int32_t                       full_attention_cache_buffer_lens[RKNN3_MAX_KVCACHE_LEN_GROUPS] = {0};
 
   memset(&devs, 0, sizeof(devs));
   memset(&io_num, 0, sizeof(io_num));
@@ -81,13 +80,11 @@ int main(int argc, char** argv)
   memset(&params, 0, sizeof(params));
   memset(&state, 0, sizeof(state));
   memset(&llm_config, 0, sizeof(llm_config));
-  memset(loras_enabled, 0, sizeof(loras_enabled));
   memset(&kvcache_policy_param, 0, sizeof(kvcache_policy_param));
   memset(llm_inputs, 0, sizeof(llm_inputs));
   memset(&llm_infer_param, 0, sizeof(llm_infer_param));
   memset(output_tensors, 0, sizeof(output_tensors));
   memset(session_userdata, 0, sizeof(session_userdata));
-  state.loras_enabled = loras_enabled;
 
   kvcache_policy_param.save_checkpoint.checkpoint_start_pos = 0;
   kvcache_policy_param.save_checkpoint.checkpoint_interval  = 128;
@@ -141,14 +138,31 @@ int main(int argc, char** argv)
   n_attention_kvcache_lens = llm_config.n_attention_kvcache_lens;
   attention_kvcache_lens   = llm_config.attention_kvcache_lens;
   if (n_attention_kvcache_lens > 0 && attention_kvcache_lens) {
+    // runtime-reported counts are untrusted; clamp to the fixed array sizes
+    if (n_attention_kvcache_lens > RKNN3_MAX_ATTENTION_TYPE_NUM) {
+      printf("n_attention_kvcache_lens %d exceeds max %d, clamping\n",
+             n_attention_kvcache_lens, RKNN3_MAX_ATTENTION_TYPE_NUM);
+      n_attention_kvcache_lens = RKNN3_MAX_ATTENTION_TYPE_NUM;
+    }
+    bool found_full_attention = false;
     for (int i = 0; i < n_attention_kvcache_lens; i++) {
       if (attention_kvcache_lens[i].attention_type == RKNN3_ATTENTION_TYPE_FULL_ATTENTION) {
         n_full_attention_cache_buffer_lens = attention_kvcache_lens[i].n_kvcache_buffer_lens;
+        if (n_full_attention_cache_buffer_lens > RKNN3_MAX_KVCACHE_LEN_GROUPS) {
+          printf("n_kvcache_buffer_lens %d exceeds max %d, clamping\n",
+                 n_full_attention_cache_buffer_lens, RKNN3_MAX_KVCACHE_LEN_GROUPS);
+          n_full_attention_cache_buffer_lens = RKNN3_MAX_KVCACHE_LEN_GROUPS;
+        }
         for (int j = 0; j < n_full_attention_cache_buffer_lens; j++) {
           full_attention_cache_buffer_lens[j] = attention_kvcache_lens[i].kvcache_buffer_lens[j];
         }
+        found_full_attention = true;
         break;
       }
+    }
+    if (!found_full_attention) {
+      n_full_attention_cache_buffer_lens  = 1;
+      full_attention_cache_buffer_lens[0] = llm_config.max_ctx_len;
     }
   } else {
     n_full_attention_cache_buffer_lens  = 1;

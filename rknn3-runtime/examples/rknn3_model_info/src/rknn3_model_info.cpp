@@ -168,6 +168,21 @@ static int print_model_basic_info(rknn3_context ctx)
   return RKNN3_SUCCESS;
 }
 
+static int print_custom_string(rknn3_context ctx)
+{
+  rknn3_custom_string custom_string;
+  memset(&custom_string, 0, sizeof(custom_string));
+
+  int ret = rknn3_query(ctx, RKNN3_QUERY_CUSTOM_STRING, &custom_string, sizeof(custom_string));
+  if (ret != RKNN3_SUCCESS) {
+    printf("rknn3_query custom string failed! ret=%d\n", ret);
+    return ret;
+  }
+
+  printf("\nCustom String:\n  %s\n", custom_string.string);
+  return RKNN3_SUCCESS;
+}
+
 static void print_tensor_attr(const char* prefix, uint32_t idx, const rknn3_tensor_attr* attr)
 {
   printf("  %s[%u]: name=%s, dtype=%s, layout=%s, n_dims=%u, shape=[", prefix, idx, attr->name,
@@ -250,6 +265,242 @@ static int print_llm_config(rknn3_context ctx)
   return RKNN3_SUCCESS;
 }
 
+static const char* get_page_cache_type_string(int32_t cache_type)
+{
+  switch (cache_type) {
+  case RKNN3_PAGE_CACHE_GENERAL:
+    return "GENERAL";
+  case RKNN3_PAGE_CACHE_FULL_ATTENTION:
+    return "FULL_ATTENTION";
+  case RKNN3_PAGE_CACHE_SLIDING_ATTENTION:
+    return "SLIDING_ATTENTION";
+  case RKNN3_PAGE_CACHE_LINEAR_ATTENTION:
+    return "LINEAR_ATTENTION";
+  case RKNN3_PAGE_CACHE_CONV_STREAMING:
+    return "CONV_STREAMING";
+  case RKNN3_PAGE_CACHE_FULL_RESIDUAL:
+    return "FULL_RESIDUAL";
+  case RKNN3_PAGE_CACHE_SLIDING_RESIDUAL:
+    return "SLIDING_RESIDUAL";
+  default:
+    return "UNKNOWN";
+  }
+}
+
+// Column widths of the per-core page table, kept in one place so the header,
+// the rows and the separators always line up.
+#define KVCACHE_NAME_WIDTH 22
+#define KVCACHE_NUM_WIDTH  11
+
+// Print the indent plus one dashed cell per table column.
+static void print_kvcache_table_separator(uint32_t indent)
+{
+  printf("%*s", (int)indent, "");
+  for (int i = 0; i < KVCACHE_NAME_WIDTH; i++) {
+    putchar('-');
+  }
+  for (int col = 0; col < 3; col++) {
+    putchar(' ');
+    for (int i = 0; i < KVCACHE_NUM_WIDTH; i++) {
+      putchar('-');
+    }
+  }
+  putchar('\n');
+}
+
+static bool same_core_layout(const rknn3_kvcache_page_info* a, const rknn3_kvcache_page_info* b)
+{
+  if (a->max_request_num != b->max_request_num || a->n_cache_types != b->n_cache_types) {
+    return false;
+  }
+  for (uint32_t j = 0; j < b->n_cache_types && j < RKNN3_MAX_CACHE_PAGE_TYPES; j++) {
+    if (a->caches[j].cache_type != b->caches[j].cache_type ||
+        a->caches[j].page_size != b->caches[j].page_size ||
+        a->caches[j].max_page_num != b->caches[j].max_page_num) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Append text to buf at *off, keeping buf NUL-terminated; never writes past buf_len.
+static void append_to_buffer(char* buf, size_t buf_len, size_t* off, const char* text)
+{
+  if (buf_len == 0) {
+    return;
+  }
+  size_t space = (*off < buf_len - 1) ? buf_len - 1 - *off : 0;
+  size_t len = strlen(text);
+  if (len > space) {
+    len = space;
+  }
+  memcpy(buf + *off, text, len);
+  *off += len;
+  buf[*off] = '\0';
+}
+
+// snprintf at *off with explicit clamping: snprintf returns the untruncated
+// length, so on truncation the offset stops at the last writable byte instead
+// of overflowing or making later size calculations underflow.
+static void append_formatted(char* buf, size_t buf_len, size_t* off, const char* fmt, uint32_t a,
+                             uint32_t b)
+{
+  size_t space = buf_len - *off;
+  int written = snprintf(buf + *off, space, fmt, a, b);
+  if (written < 0) {
+    return;
+  }
+  *off += ((size_t)written < space) ? (size_t)written : space - 1;
+  buf[*off] = '\0';
+}
+
+// Render a sorted core id list as "0,1,2" with runs of 3 or more as "0-5".
+static void format_core_list(const uint32_t* ids, uint32_t n_ids, char* buf, size_t buf_len)
+{
+  if (buf_len == 0) {
+    return;
+  }
+  buf[0] = '\0';
+  size_t off = 0;
+
+  for (uint32_t i = 0; i < n_ids;) {
+    uint32_t j = i;
+    while (j + 1 < n_ids && ids[j + 1] == ids[j] + 1) {
+      j++;
+    }
+
+    if (off > 0) {
+      append_to_buffer(buf, buf_len, &off, ",");
+    }
+    if (j - i + 1 >= 3) {
+      append_formatted(buf, buf_len, &off, "%u-%u", ids[i], ids[j]);
+    } else {
+      for (uint32_t k = i; k <= j; k++) {
+        if (k > i) {
+          append_to_buffer(buf, buf_len, &off, ",");
+        }
+        append_formatted(buf, buf_len, &off, "%u", ids[k], 0);
+      }
+    }
+    i = j + 1;
+  }
+}
+
+// Print one layout's table. Every distinct layout gets its own, so the columns
+// stay the same as the common single-layout case.
+static void print_kvcache_layout_table(const rknn3_kvcache_page_info* info, uint32_t indent)
+{
+  uint32_t n_cache_types = info->n_cache_types;
+  if (n_cache_types > RKNN3_MAX_CACHE_PAGE_TYPES) {
+    n_cache_types = RKNN3_MAX_CACHE_PAGE_TYPES;
+  }
+
+  uint64_t grand_total = 0;
+  uint32_t total_pages = 0;
+  for (uint32_t j = 0; j < n_cache_types; j++) {
+    grand_total += info->caches[j].page_size * (uint64_t)info->caches[j].max_page_num;
+    total_pages += info->caches[j].max_page_num;
+  }
+
+  printf("%*s%-*s %*s %*s %*s\n", (int)indent, "", KVCACHE_NAME_WIDTH, "Cache", KVCACHE_NUM_WIDTH,
+         "Page Size", KVCACHE_NUM_WIDTH, "Max Pages", KVCACHE_NUM_WIDTH, "Total/Core");
+  print_kvcache_table_separator(indent);
+  for (uint32_t j = 0; j < n_cache_types; j++) {
+    const rknn3_cache_page_attr* attr = &info->caches[j];
+    uint64_t total = attr->page_size * (uint64_t)attr->max_page_num;
+    printf("%*s%-*s %*.2f %*u %*.2f\n", (int)indent, "", KVCACHE_NAME_WIDTH,
+           get_page_cache_type_string(attr->cache_type), KVCACHE_NUM_WIDTH,
+           bytes_to_mb(attr->page_size), KVCACHE_NUM_WIDTH, attr->max_page_num, KVCACHE_NUM_WIDTH,
+           bytes_to_mb(total));
+  }
+  print_kvcache_table_separator(indent);
+  printf("%*s%-*s %*s %*u %*.2f\n", (int)indent, "", KVCACHE_NAME_WIDTH, "Total", KVCACHE_NUM_WIDTH,
+         "", KVCACHE_NUM_WIDTH, total_pages, KVCACHE_NUM_WIDTH, bytes_to_mb(grand_total));
+}
+
+static int print_kvcache_page_info(rknn3_context ctx, uint32_t core_num)
+{
+  // Query every core once and keep the results, so a failing query can be
+  // reported right away instead of being retried while printing.
+  rknn3_kvcache_page_info* cores =
+      (rknn3_kvcache_page_info*)calloc(core_num, sizeof(rknn3_kvcache_page_info));
+  if (cores == NULL) {
+    printf("Failed to allocate memory for kvcache page info\n");
+    return -1;
+  }
+
+  for (uint32_t i = 0; i < core_num; i++) {
+    cores[i].core_id = (int32_t)i;
+    int ret = rknn3_query(ctx, RKNN3_QUERY_KVCACHE_PAGE_INFO, &cores[i], sizeof(cores[i]));
+    if (ret != RKNN3_SUCCESS) {
+      printf("rknn3_query kvcache page info failed on core %d! ret=%d\n", cores[i].core_id, ret);
+      free(cores);
+      return ret;
+    }
+  }
+
+  // Old non-paged models report no cache types; skip this section entirely.
+  if (cores[0].n_cache_types == 0) {
+    free(cores);
+    return RKNN3_SUCCESS;
+  }
+
+  // Most models give every core the same layout. Group cores by layout so a
+  // mismatch prints one compact table per distinct layout instead of a dump.
+  uint32_t* group_rep = (uint32_t*)malloc(core_num * sizeof(uint32_t));
+  uint32_t* group_cores = (uint32_t*)malloc(core_num * sizeof(uint32_t));
+  if (group_rep == NULL || group_cores == NULL) {
+    printf("Failed to allocate memory for kvcache core grouping\n");
+    free(group_rep);
+    free(group_cores);
+    free(cores);
+    return -1;
+  }
+
+  uint32_t n_groups = 0;
+  for (uint32_t i = 0; i < core_num; i++) {
+    bool found = false;
+    for (uint32_t g = 0; g < n_groups; g++) {
+      if (same_core_layout(&cores[group_rep[g]], &cores[i])) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      group_rep[n_groups++] = i;
+    }
+  }
+
+  if (n_groups == 1) {
+    printf("\nPer-Core KVCache Page Info (MB) (all %u cores share the same layout):\n", core_num);
+    print_kvcache_layout_table(&cores[0], 2);
+  } else {
+    printf("\nPer-Core KVCache Page Info (MB) (%u cores, %u different layouts):\n", core_num,
+           n_groups);
+    for (uint32_t g = 0; g < n_groups; g++) {
+      uint32_t n_group_cores = 0;
+      for (uint32_t i = 0; i < core_num; i++) {
+        if (same_core_layout(&cores[group_rep[g]], &cores[i])) {
+          group_cores[n_group_cores++] = i;
+        }
+      }
+
+      char core_list[256];
+      format_core_list(group_cores, n_group_cores, core_list, sizeof(core_list));
+
+      const rknn3_kvcache_page_info* rep = &cores[group_rep[g]];
+      printf("\n  %s %s (%u core%s), max_request_num=%u:\n", n_group_cores == 1 ? "Core" : "Cores",
+             core_list, n_group_cores, n_group_cores == 1 ? "" : "s", rep->max_request_num);
+      print_kvcache_layout_table(rep, 4);
+    }
+  }
+
+  free(group_rep);
+  free(group_cores);
+  free(cores);
+  return RKNN3_SUCCESS;
+}
+
 static int print_allocation_info(rknn3_context ctx, uint32_t core_num)
 {
   rknn3_allocation_info* alloc_infos =
@@ -272,6 +523,9 @@ static int print_allocation_info(rknn3_context ctx, uint32_t core_num)
   uint64_t total_internal = 0;
   uint64_t total_kvcache  = 0;
 
+  // Note: KVCache here is the raw allocation reported by RKNN3_QUERY_ALLOCATION_INFO.
+  // For paged models that is the base/page geometry only; the per-core page count
+  // and the resulting total are printed separately by print_kvcache_page_info().
   printf("\nPer-Core Memory Allocation (MB):\n");
   printf("    Core      Command      Weight      Internal     KVCache      Total\n");
   printf("  -------- ------------ ------------ ------------ ------------ ------------\n");
@@ -422,9 +676,15 @@ int main(int argc, char** argv)
 
   print_sdk_version(ctx);
   print_model_basic_info(ctx);
+  print_custom_string(ctx);
   print_tensor_attrs(ctx);
   print_llm_config(ctx);
   print_device_mem_info(ctx);
+
+  if (print_kvcache_page_info(ctx, core_num) != RKNN3_SUCCESS) {
+    rknn3_destroy(ctx);
+    return -1;
+  }
 
   ret = print_allocation_info(ctx, core_num);
   if (ret != RKNN3_SUCCESS) {

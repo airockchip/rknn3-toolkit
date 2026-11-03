@@ -54,7 +54,6 @@ int main(int argc, char** argv)
   rknn3_test_session_userdata_t session_userdata;
   rknn3_llm_param               params;
   RKLLMRunState                 state;
-  rknn3_lora                    loras_enabled[RKNN3_MAX_LORA_NUM];
   rknn3_kvcache_policy          kvcache_policy = RKNN3_KVCACHE_POLICY_SAVE_CHECKPOINT;
   rknn3_kvcache_policy_param    kvcache_policy_param;
   int                           n_params     = 1;
@@ -70,12 +69,10 @@ int main(int argc, char** argv)
   memset(&callback, 0, sizeof(callback));
   memset(&params, 0, sizeof(params));
   memset(&state, 0, sizeof(state));
-  memset(loras_enabled, 0, sizeof(loras_enabled));
   memset(&kvcache_policy_param, 0, sizeof(kvcache_policy_param));
   memset(llm_inputs, 0, sizeof(llm_inputs));
   memset(&llm_infer_param, 0, sizeof(llm_infer_param));
   memset(&session_userdata, 0, sizeof(session_userdata));
-  state.loras_enabled = loras_enabled;
 
   kvcache_policy_param.save_checkpoint.checkpoint_start_pos      = 0;
   kvcache_policy_param.save_checkpoint.checkpoint_interval       = 128;
